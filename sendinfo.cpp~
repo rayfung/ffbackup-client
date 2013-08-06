@@ -124,6 +124,7 @@ void scan_dir::scan_the_dir(const char *dir, int parent_index)
             name += entry->d_name;
             send_info to_store(name.c_str(),'d',md);
             send_list.push_back(to_store);
+			printf("dir name:%s\n",name.c_str());
             scan_the_dir(entry->d_name, send_list.size() - 1);
         }
         else
@@ -137,6 +138,7 @@ void scan_dir::scan_the_dir(const char *dir, int parent_index)
             }
             name += entry->d_name;
             send_info to_store(name.c_str(),'f',md);
+			printf("file name:%s\n",name.c_str());
             send_list.push_back(to_store);
         }
     }
@@ -156,18 +158,31 @@ void scan_dir::send_file_list(SSL *ssl)
     ffbuffer buffer_to_send;
     size_t send_buffer_length = 0;
     size_t get_result = 0;
+
+	
     uint32_t count = send_list.size();
+
+	printf("1.:%d\n",send_list.size());
     int i;
     char version = 1;
     char command = 0x01;
-    char *project_name = read_item(dir_path,"Project");
+    char *project_path = "/home/william/BackupFiles";
+	
+	//read_item(dir_path,"Path");
+    char *project_name = "Hello";
+	//read_item(dir_path,"Project");
     
+	dump_data(&count,4);
+	printf("\n");
+	printf("2.:%d\n",send_list.size());
     count = hton32(count);
     buffer_to_send.push_back(&version,1);
     buffer_to_send.push_back(&command,1);
     buffer_to_send.push_back(project_name,strlen(project_name));
     buffer_to_send.push_back("\0",1);
     buffer_to_send.push_back(&count,4);
+	dump_data(&count,4);
+	printf("\n");
 
     send_buffer_length = buffer_to_send.get_size();
     send_buffer = (char *)malloc(send_buffer_length * sizeof(char));
@@ -177,69 +192,42 @@ void scan_dir::send_file_list(SSL *ssl)
         fputs("ffbuffer get error.\n",stderr);
         exit(1);
     }
-    ret = SSL_write(ssl, send_buffer, get_result);
-    switch( SSL_get_error( ssl, ret ) )
-    {
-        case SSL_ERROR_NONE:
-            break;
-        default:
-            fputs("SSL_write error.\n",stderr);
-            exit(1);
-    }
+    SSL_write(ssl, send_buffer, get_result);
     buffer_to_send.clear();
     free(send_buffer);
-    for(i = 0; i < (int)send_list.size(); i++)
+    for(i = 0; i < send_list.size(); i++)
     {
-        ret = SSL_write(ssl,send_list.at(i).get_path(),(strlen(send_list.at(i).get_path()) + 1));
-        switch( SSL_get_error( ssl, ret ) )
-        {
-            case SSL_ERROR_NONE:
-                break;
-            default:
-                fputs("SSL_write error.\n",stderr);
-                exit(1);
-        }
+        SSL_write(ssl,send_list.at(i).get_path(),(strlen(send_list.at(i).get_path()) + 1));
         if(send_list.at(i).get_file_type() == 'f')
         {
-            ret = SSL_write(ssl,"f",1);
-            switch( SSL_get_error( ssl, ret ) )
-            {
-                case SSL_ERROR_NONE:
-                    break;
-                default:
-                    fputs("SSL_write error.\n",stderr);
-                    exit(1);
-            }
-            ret = SSL_write(ssl,send_list.at(i).get_md(),SHA_DIGEST_LENGTH);
-            switch( SSL_get_error( ssl, ret ) )
-            {
-                case SSL_ERROR_NONE:
-                    break;
-                default:
-                    fputs("SSL_write error.\n",stderr);
-                    exit(1);
-            }
+            SSL_write(ssl,"f",1);
+            SSL_write(ssl,send_list.at(i).get_md(),SHA_DIGEST_LENGTH);
         }
         else
+            SSL_write(ssl,"d",1);
+    }
+	printf("Client_start_backup finished.\n");
+	printf("Client is waiting for the first response.\n");
+	ret = SSL_read(ssl,buf,2);;
+        switch( ret = SSL_get_error( ssl, ret ) )
         {
-            ret = SSL_write(ssl,"d",1);
-            switch( SSL_get_error( ssl, ret ) )
-            {
-                case SSL_ERROR_NONE:
-                    break;
-                default:
-                    fputs("SSL_write error.\n",stderr);
-                    exit(1);
-            }
+            case SSL_ERROR_NONE:
+                printf("right.\n");
+                break;
+			//case SSL_ERROR_ZERO_RETURN:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+			//case SSL_ERROR_WANT_X509_LOOKUP:
+				printf("something wrong.\n");
+                return;
+			//case SSL_ERROR_SYSCALL:
+            default:
+				perror("SSL");
+                printf("default error:%d\n",ret);
+				printf("%s\n",ERR_error_string(ret,NULL));
+                return;
         }
-    }
-    ret = SSL_read(ssl,buf,2);;
-    switch( SSL_get_error( ssl, ret ) )
-    {
-        case SSL_ERROR_NONE:
-            break;
-        default:
-            fputs("SSL_read error.\n",stderr);
-            exit(1);
-    }
+    
+	printf("start_backup version:%02x\n",(int)buf[0]);
+	printf("start_backup command:%02x\n",(int)buf[1]);
 }

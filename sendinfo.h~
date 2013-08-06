@@ -42,6 +42,7 @@ public:
     void sha1(const char*path, unsigned char *md);
     void scan_the_dir(const char* dir, int depth);
     void send_file_list(SSL *ssl);
+	uint32_t get_file_count();
     scan_dir(const char *dir_path);
 };
 #endif

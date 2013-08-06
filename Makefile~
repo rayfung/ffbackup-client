@@ -4,6 +4,6 @@ LD=-lssl -lcrypto -lrsync
 all: ffbackup-client
 
 ffbackup-client:client.cpp
-	$(CC) $(CFLAGS) client.cpp helper.cpp ffbuffer.cpp commonfunctions.cpp sendinfo.cpp writedata.cpp writediff.cpp -o ffbackup-client $(LD)
+	$(CC) $(CFLAGS) client.cpp helper.cpp ffbuffer.cpp commonfunctions.cpp sendinfo.cpp writedata.cpp -o ffbackup-client $(LD)
 clean:
 	rm -f ffbackup-client *.o
