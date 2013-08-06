@@ -48,7 +48,7 @@ static int  ssl_err_exit( const char * );
 static void sigpipe_handle( int );
 static int  ip_connect(int type, int protocol, const char *host, const char *serv);
 static void check_certificate( SSL *, int );
-static void client_request( SSL *, const char *, int );
+static void client_request(int sock, SSL *, const char *, int );
 
 static int password_cb( char *buf, int num, int rwflag, void *userdata )
 {
@@ -190,7 +190,7 @@ int main( int argc, char **argv )
         printf( "Cipher: %s\n", SSL_get_cipher( ssl ) );
 
     /* Now make our request */
-    client_request( ssl, host, atoi(port) );
+    client_request(sock, ssl, host, atoi(port) );
 
     /* Shutdown SSL connection */
     if(SSL_shutdown( ssl ) == 0)
@@ -422,7 +422,7 @@ void client_recover_backup(SSL *ssl)
  * port: the local port
  * test_finished_time: 2013-7-7 9:30
  */
-static void client_request( SSL *ssl, const char *host, int port )
+static void client_request(int sock, SSL *ssl, const char *host, int port )
 {
     client_start_backup(ssl);
     char buf[2];
@@ -464,10 +464,19 @@ static void client_request( SSL *ssl, const char *host, int port )
 
                 //the server notifies the client that the backup has been finished
             case 0x06:
-                if(SSL_shutdown( ssl ) == 1)
+                if(SSL_shutdown( ssl ) == 0)
                 {
-                    printf("All finish...\n");
-                    exit(0);
+                    shutdown(sock, SHUT_WR);
+					if(SSL_shutdown( ssl ) == 1)
+					{
+						printf("All finished.\n");
+						exit(0);
+					}
+					else
+					{
+						fputs("SSL_shutdown error.\n",stderr);
+						exit(1);
+					}
                 }
                 else
                 {
