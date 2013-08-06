@@ -48,7 +48,7 @@ static int  ssl_err_exit( const char * );
 static void sigpipe_handle( int );
 static int  ip_connect(int type, int protocol, const char *host, const char *serv);
 static void check_certificate( SSL *, int );
-static void client_request(int sock, SSL *, const char *, int );
+static void client_request(int sock, SSL *, const char *,const char *);
 
 static int password_cb( char *buf, int num, int rwflag, void *userdata )
 {
@@ -65,19 +65,30 @@ static int password_cb( char *buf, int num, int rwflag, void *userdata )
 
 int main( int argc, char **argv )
 {
-    int c, sock;
+    int c,sock;
+    char *file_path = NULL;
+    char *instruction = NULL;
     SSL_CTX *ctx;
     const SSL_METHOD *meth;
     SSL *ssl;
     BIO *sbio;
-    char *cafile = NULL;
+    char *cafile = read_item(CFG_FILE,"CA_certificate_file");
+    if(!cafile)
+        err_exit("Can not find CA_certificate_file");
     char *cadir = NULL;
-    char *certfile = NULL;
-    char *keyfile = NULL;
-    const char *host = SSL_DFLT_HOST;
+    char *certfile = read_item(CFG_FILE, "Certificate_file");
+    if(!certfile)
+        err_exit("Can not find Certificate_file");
+    char *keyfile = read_item(CFG_FILE,"Private_key_file");
+    if(!keyfile)
+        err_exit("Can not find Private_key_file");
+    const char *host = read_item(CFG_FILE,"Target_host");
+    if(!host)
+        err_exit("Can not find Target_host");
     const char *port = SSL_DFLT_PORT;
     int tlsv1 = 0;
-    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tv" )) != -1 )
+
+    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tvi:f:" )) != -1 )
     {
         switch(c)
         {
@@ -89,6 +100,8 @@ int main( int argc, char **argv )
                 printf( "-e <file>\tCertificate file\n" );
                 printf( "-k <file>\tPrivate key file\n" );
                 printf( "-d <dir>\tCA certificate directory\n" );
+                printf("-i <instruction>\tInstruction name\n");
+                printf("-f <path>\tFile path\n");
                 printf( "-v\t\tVerbose\n" );
                 exit(0);
 
@@ -121,11 +134,20 @@ int main( int argc, char **argv )
                 if ( ! (keyfile = strdup( optarg )) )
                     err_exit( "Out of memory" );
                 break;
+            case 'i':
+                if(!(instruction = strdup(optarg)))
+                    err_exit("Out of memory");
+                break;
+            case 'f':
+                if(!(file_path = strdup(optarg)))
+                    err_exit("Out of memory");
+                break;
 
             case 'T':  tlsv1 = 1;       break;
             case 'v':  verbose = 1;     break;
         }
     }
+
     /* Initialize SSL Library */
     SSL_library_init();
     SSL_load_error_strings();
@@ -190,7 +212,7 @@ int main( int argc, char **argv )
         printf( "Cipher: %s\n", SSL_get_cipher( ssl ) );
 
     /* Now make our request */
-    client_request(sock, ssl, host, atoi(port) );
+    client_request(sock, ssl, file_path, instruction );
 
     /* Shutdown SSL connection */
     if(SSL_shutdown( ssl ) == 0)
@@ -422,9 +444,19 @@ void client_recover_backup(SSL *ssl)
  * port: the local port
  * test_finished_time: 2013-7-7 9:30
  */
-static void client_request(int sock, SSL *ssl, const char *host, int port )
+static void client_request(int sock, SSL *ssl, const char *file_path, const char *instruction)
 {
-    client_start_backup(ssl);
+    if(!strcmp(instruction, "backup"))
+        client_start_backup(ssl);
+    else if(!strcmp(instruction, "recover"))
+        client_recover_backup(ssl);
+    else if(!strcmp(instruction, "restore"))
+        printf("Restore from the server\n");
+    else
+    {
+        fputs("Instruction error.\n",stderr);
+        exit(1);
+    }
     char buf[2];
     int ret;
     while(1)
@@ -444,10 +476,6 @@ static void client_request(int sock, SSL *ssl, const char *host, int port )
 
         switch(code)
         {		
-            //to check the network connection whether is OK
-            case 0x02:
-                break;
-
                 //the client has to response the server_request_whole_file() function
             case 0x03:
                 client_response_whole_file(ssl);
@@ -456,10 +484,6 @@ static void client_request(int sock, SSL *ssl, const char *host, int port )
                 //the client has to response the server_request_file_diff() function
             case 0x04:
                 client_response_file_diff(ssl);
-                break;
-
-                //the client sends the recover request to server
-            case 0x05:
                 break;
 
                 //the server notifies the client that the backup has been finished
@@ -489,7 +513,6 @@ static void client_request(int sock, SSL *ssl, const char *host, int port )
                 fputs("Error command read from the server:\n",stderr);
                 exit(1);
         }
-
     }
 
 }
