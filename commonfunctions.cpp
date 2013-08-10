@@ -35,8 +35,8 @@ char *read_item(char const *cfgFile, char const *item)
                 return NULL;
             }
             size_t length = strlen(dest);
-			memcpy(result, dest, length);
-			//result = dest;
+            memcpy(result, dest, length);
+            //result = dest;
             result[length - 1] = '\0';
             fclose(fp);
             return (result);

@@ -329,10 +329,10 @@ void die(const char *msg)
 */
 void client_start_backup(SSL *ssl)
 {
-	scan_dir scan(CFG_FILE);
-	char *project_path = read_item(CFG_FILE,"Path");
-	scan.scan_the_dir(project_path, -1);
-	scan.send_file_list(ssl);
+    scan_dir scan(CFG_FILE);
+    char *project_path = read_item(CFG_FILE,"Path");
+    scan.scan_the_dir(project_path, -1);
+    scan.send_file_list(ssl);
     free(project_path);
 }
 
@@ -344,15 +344,14 @@ void client_start_backup(SSL *ssl)
  */
 void client_response_whole_file(SSL *ssl)
 {
-	ffbuffer store;
-	char *pass = read_string(ssl);
-	char *project_path = read_item(CFG_FILE,"Path");
-	write_data send_data(project_path);
-	send_data.write_to_server(pass,ssl);
-	free(pass);
-	return ;
+    ffbuffer store;
+    char *pass = read_string(ssl);
+    char *project_path = read_item(CFG_FILE,"Path");
+    write_data send_data(project_path);
+    send_data.write_to_server(pass,ssl);
+    free(pass);
+    return ;
 }
-	
 
 
 /**
@@ -361,9 +360,9 @@ void client_response_whole_file(SSL *ssl)
  */
 void client_response_file_diff(SSL *ssl)
 {
-	char *project_path = read_item(CFG_FILE,"Path");
-	write_diff difference(project_path);
-	difference.write_to_server(ssl);
+    char *project_path = read_item(CFG_FILE,"Path");
+    write_diff difference(project_path);
+    difference.write_to_server(ssl);
     free(project_path);
 }
 
@@ -375,24 +374,24 @@ void client_response_file_diff(SSL *ssl)
  */
 void client_recover_backup(SSL *ssl)
 {
-	char *project_name = read_item(CFG_FILE,"Project");
+    char *project_name = read_item(CFG_FILE,"Project");
     char version = 1;
     char command = 0x05;
-	char buf[2];
-	size_t length = 0;    
-	char *to_send;
-	length = strlen(project_name);
-	to_send = (char *)malloc(length + 3);
-	to_send[0] = version;
-	to_send[1] = command;
-	strcpy(&to_send[2], project_name);
+    char buf[2];
+    size_t length = 0;
+    char *to_send;
+    length = strlen(project_name);
+    to_send = (char *)malloc(length + 3);
+    to_send[0] = version;
+    to_send[1] = command;
+    strcpy(&to_send[2], project_name);
     ssl_write_wrapper(ssl, to_send, length + 3);
     ssl_read_wrapper(ssl, buf, 2);
     free(project_name);
-	if(buf[1] != 0x00)
-		client_start_backup(ssl);
-	else
-		return ;
+    if(buf[1] != 0x00)
+        client_start_backup(ssl);
+    else
+        return ;
 }
 
 
@@ -452,7 +451,7 @@ static void client_request(int sock, SSL *ssl, const char *file_path, const char
         int code = (int)buf[1];
 
         switch(code)
-        {		
+        {
                 //the client has to response the server_request_whole_file() function
             case 0x03:
                 client_response_whole_file(ssl);
@@ -468,16 +467,16 @@ static void client_request(int sock, SSL *ssl, const char *file_path, const char
                 if(SSL_shutdown( ssl ) == 0)
                 {
                     shutdown(sock, SHUT_WR);
-					if(SSL_shutdown( ssl ) == 1)
-					{
-						printf("All finished.\n");
-						exit(0);
-					}
-					else
-					{
-						fputs("SSL_shutdown error.\n",stderr);
-						exit(1);
-					}
+                    if(SSL_shutdown( ssl ) == 1)
+                    {
+                        printf("All finished.\n");
+                        exit(0);
+                    }
+                    else
+                    {
+                        fputs("SSL_shutdown error.\n",stderr);
+                        exit(1);
+                    }
                 }
                 else
                 {

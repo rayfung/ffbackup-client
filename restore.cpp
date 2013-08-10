@@ -39,8 +39,8 @@ void restore::client_get_prj(SSL *ssl)
     }
     fwrite("Project_list_length = ", 1, strlen("Project_list_length = "), fp);
     fwrite(&list_length, 1, 4, fp);
-	if(!list_length)
-		return;
+    if(!list_length)
+        return;
     fwrite("\n", 1, 1, fp);
     while(--list_length)
     {
@@ -150,7 +150,7 @@ void restore::client_restore(SSL *ssl, const char *project_name, uint32_t number
         fputs("Project path is wrong.\n",stderr);
         exit(1);
     }
-	free(project_path);
+    free(project_path);
     buf[0] = version;
     buf[1] = command;
     ssl_write_wrapper(ssl, buf, 2);
@@ -196,9 +196,9 @@ void restore::client_restore(SSL *ssl, const char *project_name, uint32_t number
                 exit(1);
             }
         }
-		free(path);
+        free(path);
     }
-	if(chdir("..") == -1)
+    if(chdir("..") == -1)
     {
         fputs("Chdir error.\n",stderr);
         exit(1);

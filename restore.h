@@ -11,9 +11,9 @@ using namespace std;
 class restore
 {
 private:
-	//file_path: the path of the file to store the informations from the server
+    //file_path: the path of the file to store the informations from the server
     char *file_path;
-	vector<string> project_list;
+    vector<string> project_list;
 public:
     restore(const char *path);
     void client_get_prj(SSL *ssl);
