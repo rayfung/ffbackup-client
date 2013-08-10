@@ -23,6 +23,7 @@
 #include "sendinfo.h"
 #include "writedata.h"
 #include "writediff.h"
+#include "restore.h"
 
 #include <librsync.h>
 
@@ -395,7 +396,34 @@ void client_recover_backup(SSL *ssl)
 }
 
 
-
+void client_restore_from_server(int sock, SSL *ssl, const  char *file_path)
+{
+    char project_name[] = "FFBackup";
+    uint32_t number = 1;
+    restore operation(file_path);
+    operation.client_get_prj(ssl);
+    operation.client_get_time_line(ssl);
+    operation.client_restore(ssl, project_name,number);
+    if(SSL_shutdown( ssl ) == 0)
+    {
+        shutdown(sock, SHUT_WR);
+        if(SSL_shutdown( ssl ) == 1)
+        {
+            printf("Restore finished.\n");
+            exit(0);
+        }
+        else
+        {
+            fputs("SSL_shutdown error.\n",stderr);
+            exit(1);
+        }
+    }
+    else
+    {
+        fputs("SSL_shutdown error.\n",stderr);
+        exit(1);
+    }
+}
 /**
  * client ask to backup the project
  * ssl: the ssl to communicate with the server
@@ -409,7 +437,7 @@ static void client_request(int sock, SSL *ssl, const char *file_path, const char
     else if(!strcmp(instruction, "recover"))
         client_recover_backup(ssl);
     else if(!strcmp(instruction, "restore"))
-        printf("Restore from the server\n");
+        client_restore_from_server(sock, ssl, file_path);
     else
     {
         fputs("Instruction error.\n",stderr);
