@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "commonfunctions.h"
+#include "ffbuffer.h"
 
 /**
  * read the configuration file
@@ -45,4 +46,68 @@ char *read_item(char const *cfgFile, char const *item)
     fclose(fp);
     fputs("Can not find the item\n",stderr);
     return NULL;
+}
+
+
+char *read_string(SSL *ssl)
+{
+    ffbuffer store;
+    char buf[1];
+    int ret;
+    size_t ffbuffer_length = 0;
+    char *pass;
+    while(1)
+    {
+        ret = SSL_read(ssl, buf, 1);
+        switch( SSL_get_error( ssl, ret ) )
+        {
+            case SSL_ERROR_NONE:
+                break;
+            default:
+                fputs("SSL_write error.\n",stderr);
+                exit(1);
+        }
+        store.push_back(buf,1);
+        if(!buf[0])
+            break;
+    }
+    ffbuffer_length = store.get_size();
+    pass = (char *)malloc(ffbuffer_length);
+    if(!pass)
+    {
+        fputs("Malloc error.\n",stderr);
+        exit(1);
+    }
+    store.get(pass, 0, ffbuffer_length);
+    return pass;
+}
+
+
+void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
+{
+    int ret;
+    ret = SSL_read(ssl, buffer, num);
+    switch( SSL_get_error( ssl, ret ) )
+    {
+        case SSL_ERROR_NONE:
+            break;
+        default:
+            fputs("SSL_read error.\n",stderr);
+            exit(1);
+    }
+}
+
+
+void ssl_write_wrapper(SSL *ssl, const void *buffer, int num)
+{
+    int ret;
+    ret = SSL_write(ssl, buffer, num);
+    switch( SSL_get_error( ssl, ret ) )
+    {
+        case SSL_ERROR_NONE:
+            break;
+        default:
+            fputs("SSL_write error.\n",stderr);
+            exit(1);
+    }
 }

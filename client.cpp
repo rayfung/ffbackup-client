@@ -332,6 +332,7 @@ void client_start_backup(SSL *ssl)
 	char *project_path = read_item(CFG_FILE,"Path");
 	scan.scan_the_dir(project_path, -1);
 	scan.send_file_list(ssl);
+    free(project_path);
 }
 
 
@@ -339,41 +340,13 @@ void client_start_backup(SSL *ssl)
 /**
  * the client response to the server_request_whole_file() function
  * ssl: the sock to write data to the server
- * received_buffer: the received_buffer from the server
- * test_finished_time: 2013-7-7 11:00
  */
 void client_response_whole_file(SSL *ssl)
 {
 	ffbuffer store;
-	char *pass;
-	char buf[1];
-	size_t ffbuffer_length = 0;
+	char *pass = read_string(ssl);
 	char *project_path = read_item(CFG_FILE,"Path");
-    int ret;
-	while(1)
-	{
-		ret = SSL_read(ssl, buf, 1);
-        switch( SSL_get_error( ssl, ret ) )
-        {
-            case SSL_ERROR_NONE:
-                break;
-            default:
-                fputs("SSL_write error.\n",stderr);
-                exit(1);
-        }
-		store.push_back(buf,1);
-		if(!buf[0])
-			break;
-	}
 	write_data send_data(project_path);
-	ffbuffer_length = store.get_size();
-	pass = (char *)malloc( ffbuffer_length );
-	if(!pass)
-	{
-		fputs("Malloc error.\n",stderr);
-		exit(1);
-	}
-	store.get(pass, 0, ffbuffer_length);
 	send_data.write_to_server(pass,ssl);
 	free(pass);
 	return ;
@@ -384,13 +357,13 @@ void client_response_whole_file(SSL *ssl)
 /**
  * the client response to the server_request_file_diff() function
  * ssl: the sock to write data to the server
- * received_buffer: the buffer received from the server 
  */
 void client_response_file_diff(SSL *ssl)
 {
 	char *project_path = read_item(CFG_FILE,"Path");
 	write_diff difference(project_path);
 	difference.write_to_server(ssl);
+    free(project_path);
 }
 
 
@@ -402,33 +375,19 @@ void client_response_file_diff(SSL *ssl)
 void client_recover_backup(SSL *ssl)
 {
 	char *project_name = read_item(CFG_FILE,"Project");
+    char version = 1;
+    char command = 0x05;
 	char buf[2];
 	size_t length = 0;    
 	char *to_send;
-    int ret;
 	length = strlen(project_name);
 	to_send = (char *)malloc(length + 3);
-	to_send[0] = 1;
-	to_send[1] = 0x05;
+	to_send[0] = version;
+	to_send[1] = command;
 	strcpy(&to_send[2], project_name);
-	ret = SSL_write(ssl, to_send, length + 3);
-    switch( SSL_get_error( ssl, ret ) )
-    {
-        case SSL_ERROR_NONE:
-            break;
-        default:
-            fputs("SSL_write error.\n",stderr);
-            exit(1);
-    }
-	ret = SSL_read(ssl,buf,2);
-    switch( SSL_get_error( ssl, ret ) )
-    {
-        case SSL_ERROR_NONE:
-            break;
-        default:
-            fputs("SSL_read error.\n",stderr);
-            exit(1);
-    }
+    ssl_write_wrapper(ssl, to_send, length + 3);
+    ssl_read_wrapper(ssl, buf, 2);
+    free(project_name);
 	if(buf[1] != 0x00)
 		client_start_backup(ssl);
 	else
@@ -440,9 +399,8 @@ void client_recover_backup(SSL *ssl)
 /**
  * client ask to backup the project
  * ssl: the ssl to communicate with the server
- * host: the local ip
- * port: the local port
- * test_finished_time: 2013-7-7 9:30
+ * file_path: the spy program use it to store the information of the current program 
+ * instruction: the instruction that the client want to excuate 
  */
 static void client_request(int sock, SSL *ssl, const char *file_path, const char *instruction)
 {
@@ -458,18 +416,9 @@ static void client_request(int sock, SSL *ssl, const char *file_path, const char
         exit(1);
     }
     char buf[2];
-    int ret;
     while(1)
     {
-        ret = SSL_read(ssl, buf, 2);
-        switch( SSL_get_error( ssl, ret ) )
-        {
-            case SSL_ERROR_NONE:
-                break;
-            default:
-                fputs("SSL_write error.\n",stderr);
-                exit(1);
-        }
+        ssl_read_wrapper(ssl, buf, 2);
         printf("The version from server:%02x\n",(int)buf[0]);
         printf("The command from the server:%02x\n",(int)buf[1]);
         int code = (int)buf[1];
