@@ -17,17 +17,18 @@
 #include <iostream>
 #include <vector>
 
+#include "client.h"
 #include "helper.h"
 #include "ffbuffer.h"
 #include "commonfunctions.h"
-#include "sendinfo.h"
-#include "writedata.h"
-#include "writediff.h"
+#include "file_info.h"
+#include "scan_dir.h"
+#include "send_addition.h"
+#include "send_diff.h"
 #include "restore.h"
 
 #include <librsync.h>
 
-#include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
@@ -50,6 +51,15 @@ static void sigpipe_handle( int );
 static int  ip_connect(int type, int protocol, const char *host, const char *serv);
 static void check_certificate( SSL *, int );
 static void client_request(int sock, SSL *, const char *,const char *);
+
+static vector<file_info> local_list;
+static vector<file_info> server_list;
+static vector<file_info> diff_list;
+static vector<file_info> addition_list;
+static vector<file_info> deletion_list;
+static vector<file_info> delta_list;
+
+static char version = 2;
 
 static int password_cb( char *buf, int num, int rwflag, void *userdata )
 {
@@ -327,88 +337,233 @@ void die(const char *msg)
 *the client start backup and send the files list to the server
 *ssl: the sock to write data to the server
 */
-void client_start_backup(SSL *ssl)
-{
-    scan_dir scan(CFG_FILE);
-    char *project_path = read_item(CFG_FILE,"Path");
-    scan.scan_the_dir(project_path, -1);
-    scan.send_file_list(ssl);
-    free(project_path);
-}
-
-
-
-/**
- * the client response to the server_request_whole_file() function
- * ssl: the sock to write data to the server
- */
-void client_response_whole_file(SSL *ssl)
-{
-    ffbuffer store;
-    char *pass = read_string(ssl);
-    char *project_path = read_item(CFG_FILE,"Path");
-    write_data send_data(project_path);
-    send_data.write_to_server(pass,ssl);
-    free(pass);
-    return ;
-}
-
-
-/**
- * the client response to the server_request_file_diff() function
- * ssl: the sock to write data to the server
- */
-void client_response_file_diff(SSL *ssl)
-{
-    char *project_path = read_item(CFG_FILE,"Path");
-    write_diff difference(project_path);
-    difference.write_to_server(ssl);
-    free(project_path);
-}
-
-
-
-/**
- * recover the project which has not been finished last time
- * ssl: the sock to write data to the server
- */
-void client_recover_backup(SSL *ssl)
+void start_backup(SSL *ssl)
 {
     char *project_name = read_item(CFG_FILE,"Project");
-    char version = 1;
-    char command = 0x05;
-    char buf[2];
-    size_t length = 0;
-    char *to_send;
-    length = strlen(project_name);
-    to_send = (char *)malloc(length + 3);
-    to_send[0] = version;
-    to_send[1] = command;
-    strcpy(&to_send[2], project_name);
-    ssl_write_wrapper(ssl, to_send, length + 3);
-    ssl_read_wrapper(ssl, buf, 2);
+    char *project_path = read_item(CFG_FILE, "Path");
+    char buffer[2];
+    char command = 0x01;
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_write_wrapper(ssl, project_name, strlen(project_name) + 1);
+    ssl_read_wrapper(ssl, buffer, 2);
+    server_list = get_server_list(ssl);
+    local_list = get_local_list(project_path);
+    list_compare(local_list, server_list, addition_list, diff_list, deletion_list);
+    simplify_deletion_list(deletion_list);
+    free(project_path);
     free(project_name);
-    if(buf[1] != 0x00)
-        client_start_backup(ssl);
-    else
-        return ;
+}
+
+void get_hash(SSL *ssl)
+{
+    char buffer[2];
+    char command = 0x02;
+    uint32_t file_count = 0;
+    int i = 0;
+    char sha[20];
+
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    file_count = diff_list.size();
+    file_count = hton32(file_count);
+    ssl_write_wrapper(ssl, &file_count, 4);
+    while(i < (int)diff_list.size())
+    {
+        ssl_write_wrapper(ssl, diff_list.at(i).get_path(), strlen(diff_list.at(i).get_path()) + 1);
+        i++;
+    }
+    
+    ssl_read_wrapper(ssl, buffer, 2);
+    ssl_read_wrapper(ssl, &file_count, 4);
+    file_count = ntoh32(file_count);
+    i = 0;
+    while(i < (int)file_count)
+    {
+        ssl_read_wrapper(ssl, sha, 20);
+        diff_list.at(i).set_sha1(sha);
+        i++;
+    }
+}
+
+void get_signature(SSL *ssl)
+{
+    char buffer[2];
+    char command = 0x03;
+    uint32_t file_count = 0;
+    uint64_t file_size = 0;
+    uint64_t total_read = 0;
+    char sig_buffer[MAX_BUFFER_SIZE];
+    int i = 0;
+    char sig_name[32];
+    FILE *sig_file;
+    char *sig_dir = read_item(CFG_FILE, "Sig");
+    string name;
+    if(!sig_dir)
+    {
+        fputs("Read_item error.\n",stderr);
+        exit(1);
+    }
+    if(chdir(sig_dir) == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    file_count = delta_list.size();
+    file_count = hton32(file_count);
+    ssl_write_wrapper(ssl, &file_count, 4);
+    
+    while(i < (int)delta_list.size())
+    {
+        ssl_write_wrapper(ssl, delta_list.at(i).get_path(), strlen(delta_list.at(i).get_path()) + 1);
+        i++;
+    }
+    ssl_read_wrapper(ssl, buffer, 2);
+    ssl_read_wrapper(ssl, &file_count, 4);
+    file_count = ntoh32(file_count);
+    i = 0;
+    while(i < (int)file_count)
+    {
+        sprintf(sig_name, "%d", i);
+        name.append(sig_dir);
+        name.append(sig_name);
+        delta_list.at(i).set_sig_path(name.c_str());
+        name.clear();
+        sig_file = fopen(sig_name, "wb");
+        if(!sig_file)
+        {
+            fputs("Fopen error.\n",stderr);
+            exit(1);
+        }
+        ssl_read_wrapper(ssl, &file_size, 8);
+        file_size = ntoh64(file_size);
+        while((total_read + MAX_BUFFER_SIZE) < file_size)
+        {
+            ssl_read_wrapper(ssl, sig_buffer, MAX_BUFFER_SIZE);
+            fwrite(sig_buffer, 1, MAX_BUFFER_SIZE, sig_file);
+            total_read += MAX_BUFFER_SIZE;
+        }
+        if(total_read != file_size)
+        {
+            ssl_read_wrapper(ssl, sig_buffer, file_size - total_read);
+            fwrite(sig_buffer, 1, file_size - total_read, sig_file);
+        }
+        fclose(sig_file);
+        total_read = 0;
+        i++;
+    }
+    free(sig_dir);
+    if(chdir("..") == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+}
+
+void send_delta(SSL *ssl)
+{
+    char *project_path = read_item(CFG_FILE, "Path");
+    uint32_t i = 0;
+    char buffer[2];
+    char command = 0x04;
+    uint32_t file_count = 0;
+    send_diff to_send;
+    if(!project_path)
+    {
+        fputs("Read_item error.\n",stderr);
+        exit(1);
+    }
+    if(chdir(project_path) == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+    file_count = delta_list.size();
+    file_count = hton32(file_count);
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_write_wrapper(ssl, &file_count, 4);
+    while(i < delta_list.size())
+    {
+        to_send.send_delta(delta_list.at(i).get_path(), delta_list.at(i).get_sig_path(),ssl);
+    }
+    ssl_read_wrapper(ssl, buffer, 2);
+    free(project_path);
+    if(chdir("..") == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+}
+
+void send_addition_fn(SSL *ssl)
+{
+    char *project_path = read_item(CFG_FILE, "Path");
+    char buffer[2];
+    char command = 0x06;
+    uint32_t i = 0;
+    uint32_t file_count = 0;
+    send_addition to_send(project_path);
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    file_count = addition_list.size();
+    file_count = hton32(file_count);
+    ssl_write_wrapper(ssl, &file_count, 4);
+    while(i < addition_list.size())
+    {
+        to_send.send_to_server(addition_list.at(i).get_path(), ssl);
+        i++;
+    }
+    ssl_read_wrapper(ssl, buffer, 2);
+    printf("command:%d\n",(int)buffer[1]);
+    free(project_path);
+}
+
+void send_deletion(SSL *ssl)
+{
+    char buffer[2];
+    uint32_t i = 0;
+    uint32_t file_count = 0;
+    char command = 0x05;
+    file_count = deletion_list.size();
+    file_count = hton32(file_count);
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_write_wrapper(ssl, &file_count, 4);
+    while(i < deletion_list.size())
+    {
+        ssl_write_wrapper(ssl, deletion_list.at(i).get_path(), strlen(deletion_list.at(i).get_path()) + 1);
+        i++;
+    }
+    ssl_read_wrapper(ssl, buffer, 2);
 }
 
 
-void client_restore_from_server(int sock, SSL *ssl, const  char *file_path)
+
+void finish_backup(int sock, SSL *ssl)
 {
-    char project_name[] = "FFBackup";
-    uint32_t number = 1;
-    restore operation(file_path);
-    operation.client_get_prj(ssl);
-    operation.client_get_time_line(ssl);
-    operation.client_restore(ssl, project_name,number);
+    char buffer[2];
+    char command = 0x07;
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_read_wrapper(ssl, buffer, 2);
+    printf("command:%d\n",buffer[1]);
     if(SSL_shutdown( ssl ) == 0)
     {
         shutdown(sock, SHUT_WR);
         if(SSL_shutdown( ssl ) == 1)
         {
-            printf("Restore finished.\n");
+            printf("All finished.\n");
             exit(0);
         }
         else
@@ -423,6 +578,20 @@ void client_restore_from_server(int sock, SSL *ssl, const  char *file_path)
         exit(1);
     }
 }
+
+void client_get_prj(SSL *ssl)
+{
+}
+
+void client_get_time_line(SSL *ssl)
+{
+}
+
+void client_restore(SSL *ssl)
+{
+}
+
+
 /**
  * client ask to backup the project
  * ssl: the ssl to communicate with the server
@@ -432,63 +601,44 @@ void client_restore_from_server(int sock, SSL *ssl, const  char *file_path)
 static void client_request(int sock, SSL *ssl, const char *file_path, const char *instruction)
 {
     if(!strcmp(instruction, "backup"))
-        client_start_backup(ssl);
-    else if(!strcmp(instruction, "recover"))
-        client_recover_backup(ssl);
-    else if(!strcmp(instruction, "restore"))
-        client_restore_from_server(sock, ssl, file_path);
+        start_backup(ssl);
     else
     {
-        fputs("Instruction error.\n",stderr);
+        fputs("Instruction has not been finished.\n",stderr);
         exit(1);
     }
-    char buf[2];
+    char code = 0x06;
     while(1)
     {
-        ssl_read_wrapper(ssl, buf, 2);
-        printf("The version from server:%02x\n",(int)buf[0]);
-        printf("The command from the server:%02x\n",(int)buf[1]);
-        int code = (int)buf[1];
-
         switch(code)
         {
-                //the client has to response the server_request_whole_file() function
+            case 0x02:
+                get_hash(ssl);
+                code = 0x03;
+                break;
             case 0x03:
-                client_response_whole_file(ssl);
+                get_signature(ssl);
+                code = 0x04;
                 break;
-
-                //the client has to response the server_request_file_diff() function
             case 0x04:
-                client_response_file_diff(ssl);
+                send_delta(ssl);
+                code = 0x05;
                 break;
-
-                //the server notifies the client that the backup has been finished
+            case 0x05:
+                send_deletion(ssl);
+                code = 0x06;
+                break;
             case 0x06:
-                if(SSL_shutdown( ssl ) == 0)
-                {
-                    shutdown(sock, SHUT_WR);
-                    if(SSL_shutdown( ssl ) == 1)
-                    {
-                        printf("All finished.\n");
-                        exit(0);
-                    }
-                    else
-                    {
-                        fputs("SSL_shutdown error.\n",stderr);
-                        exit(1);
-                    }
-                }
-                else
-                {
-                    fputs("SSL_shutdown error.\n",stderr);
-                    exit(1);
-                }
-
+                send_addition_fn(ssl);
+                code = 0x07;
+                break;
+            case 0x07:
+                finish_backup(sock, ssl);
+                code = 0x08;
                 break;
             default:
-                fputs("Error command read from the server:\n",stderr);
+                fputs("Error code to excuate.\n",stderr);
                 exit(1);
         }
     }
-
 }

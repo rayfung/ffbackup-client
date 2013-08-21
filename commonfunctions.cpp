@@ -2,6 +2,8 @@
 #include <string.h>
 #include "commonfunctions.h"
 #include "ffbuffer.h"
+#include "helper.h"
+#include "scan_dir.h"
 
 /**
  * read the configuration file
@@ -109,5 +111,94 @@ void ssl_write_wrapper(SSL *ssl, const void *buffer, int num)
         default:
             fputs("SSL_write error.\n",stderr);
             exit(1);
+    }
+}
+
+vector<file_info> get_server_list(SSL *ssl)
+{
+    vector<file_info> file_list;
+    uint32_t file_count = 0;
+    int i= 0;
+    char file_type;
+    char *file_path;
+    ssl_read_wrapper(ssl, &file_count, 4);
+    file_count = ntoh32(file_count);
+    for(i = 0; i < (int)file_count; i++)
+    {
+        file_path = read_string(ssl);
+        ssl_read_wrapper(ssl, &file_type, 1);
+        file_info store(file_path, file_type);
+        file_list.push_back(store);
+        free(file_path);
+    }
+    return file_list;
+}
+
+vector<file_info> get_local_list(const char *project_path)
+{
+    vector<file_info> file_list;
+    scan_dir to_scan(project_path);
+    to_scan.scan_the_dir(project_path, -1);
+    file_list = to_scan.get_local_list();
+    return file_list;
+}
+
+void list_compare(vector<file_info>&local_list,vector<file_info>&server_list, \
+        vector<file_info>&addition_list, vector<file_info>&diff_list, vector<file_info>&deletion_list)
+{
+    size_t i = 0;
+    size_t j = 0;
+    vector<file_info> temp_list = server_list;
+    while(i < local_list.size())
+    {
+        while(j < server_list.size())
+        {
+            if(strcmp(local_list.at(i).get_path(), server_list.at(j).get_path()) == 0)
+            {
+                if(local_list.at(i).get_file_type() == server_list.at(j).get_file_type())
+                {
+                    diff_list.push_back(local_list.at(i));
+                    temp_list.erase(temp_list.begin() + j);
+                    break;
+                }
+            }
+            j++;
+        }
+        if(j == server_list.size())
+            addition_list.push_back(local_list.at(i));
+        i++;
+        j = 0;
+    }
+    deletion_list = temp_list;
+}
+
+void simplify_deletion_list(vector<file_info>&deletion_list)
+{
+    vector<file_info> temp_list = deletion_list;
+    const size_t max_buffer_size = 1024;
+    char buffer[max_buffer_size];
+    size_t buffer_length = 0;
+    size_t i = 0;
+    size_t j = 0;
+    while(i < temp_list.size())
+    {
+        if(temp_list.at(i).get_file_type() == 'd')
+        {
+            strcpy(buffer, temp_list.at(i).get_path());
+            buffer_length = strlen(buffer);
+            strcpy(&buffer[buffer_length],"/");
+            buffer_length++;
+            j = 0;
+            while( j < deletion_list.size())
+            {
+                if(strncmp(buffer, deletion_list.at(j).get_path(), buffer_length) == 0)
+                {
+                    deletion_list.erase(deletion_list.begin() + j);
+                }
+                else
+                    j++;
+            }
+        }
+        i++;
     }
 }
