@@ -64,7 +64,8 @@ void send_addition::send_to_server(const char*path, SSL *ssl)
         while(!feof(pf))
         {
             result = fread(buffer, 1, max_buffer_size, pf);
-            ssl_write_wrapper(ssl, buffer, result);
+            if(result > 0)
+                ssl_write_wrapper(ssl, buffer, result);
         }
         fclose(pf);
     }
