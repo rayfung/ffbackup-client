@@ -1,5 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "commonfunctions.h"
 #include "ffbuffer.h"
 #include "helper.h"
@@ -202,3 +206,65 @@ void simplify_deletion_list(vector<file_info>&deletion_list)
         i++;
     }
 }
+
+void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
+{
+    const size_t md_length = 20;
+    unsigned char *sha;
+    unsigned char temp[md_length];
+    unsigned int i = 0;
+    unsigned int j = 0;
+    sha = (unsigned char *)malloc(sizeof(unsigned char) * 20);
+    if(!sha)
+    {
+        fputs("Malloc error.\n",stderr);
+        exit(1);
+    }
+    for(i = 0; i < diff_list.size(); i++)
+    {
+        sha = diff_list.at(i).get_sha1();
+        get_file_sha1(diff_list.at(i).get_path(), temp);
+        for(j = 0; j < md_length; j++)
+        {
+            if(temp[j] == sha[j]) continue;
+            else break;
+        }
+        if(j < 20)
+            delta_list.push_back(diff_list.at(i));
+        j = 0;
+    }
+}
+
+void get_file_sha1(const char* path, unsigned char *md)
+{
+    int pf = open(path,O_RDONLY);
+    if(pf == -1)
+    {
+        fputs("File can not be open.\n",stderr);
+        exit(1);
+    }
+    const size_t buffer_size = 2048;
+    ssize_t ret;
+    unsigned char data[buffer_size];
+    SHA_CTX ctx;
+    if(SHA1_Init(&ctx) == 0)
+    {
+        fputs("SHA1_Init error.\n",stderr);
+        exit(1);
+    }
+    while( (ret = read(pf, data, buffer_size)) > 0)
+    {
+        if(SHA1_Update(&ctx,data,ret) == 0)
+        {
+            fputs("SHA1_Update error.\n",stderr);
+            exit(1);
+        }
+    }
+    if(SHA1_Final(md, &ctx) == 0)
+    {
+        fputs("SHA1_Final error.\n",stderr);
+        exit(1);
+    }
+    return ;
+}
+

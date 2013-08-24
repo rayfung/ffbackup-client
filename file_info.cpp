@@ -46,11 +46,16 @@ void file_info::set_sig_path(const char *str)
     }
 }
 
-void file_info::set_sha1(char *str)
+void file_info::set_sha1(unsigned char *str)
 {
     int i = 0;
     for(i = 0; i < 20; i++)
     {
         sha1[i] = str[i];
     }
+}
+
+unsigned char *file_info::get_sha1()
+{
+    return sha1;
 }

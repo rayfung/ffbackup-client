@@ -11,13 +11,14 @@ private:
     char *path;// the file's path
     char file_type;// the file's type
     char *sig_path;// the sig file's path
-    char sha1[20];// the sha1 of the file
+    unsigned char sha1[20];// the sha1 of the file
 public:
     char *get_path();
     char get_file_type();
     void set_sig_path(const char *str);
     char *get_sig_path();
-    void set_sha1(char *str);
+    void set_sha1(unsigned char *str);
+    unsigned char *get_sha1();
     file_info(const char *path, char file_type);
 };
 #endif
