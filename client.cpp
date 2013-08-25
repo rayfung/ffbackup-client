@@ -361,8 +361,8 @@ void get_hash(SSL *ssl)
     char buffer[2];
     char command = 0x02;
     uint32_t file_count = 0;
-    int i = 0;
-    char sha[20];
+    unsigned int i = 0;
+    unsigned char sha[20];
 
     buffer[0] = version;
     buffer[1] = command;
@@ -370,7 +370,7 @@ void get_hash(SSL *ssl)
     file_count = diff_list.size();
     file_count = hton32(file_count);
     ssl_write_wrapper(ssl, &file_count, 4);
-    while(i < (int)diff_list.size())
+    while(i < diff_list.size())
     {
         ssl_write_wrapper(ssl, diff_list.at(i).get_path(), strlen(diff_list.at(i).get_path()) + 1);
         i++;
@@ -380,12 +380,13 @@ void get_hash(SSL *ssl)
     ssl_read_wrapper(ssl, &file_count, 4);
     file_count = ntoh32(file_count);
     i = 0;
-    while(i < (int)file_count)
+    while(i < file_count)
     {
         ssl_read_wrapper(ssl, sha, 20);
         diff_list.at(i).set_sha1(sha);
         i++;
     }
+    find_delta_list(diff_list, delta_list);
 }
 
 void get_signature(SSL *ssl)
