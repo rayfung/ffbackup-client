@@ -133,8 +133,7 @@ void restore::client_restore(SSL *ssl, const char *project_name, uint32_t number
     const size_t MAX_BUFFER_SIZE = 1024;
     char buffer[MAX_BUFFER_SIZE];
     uint64_t var_length = 0;
-    const char CFG[] = "/home/william/git/ffbackup/client/project.cfg";
-    char *project_path = read_item(CFG, "Path");
+    char *project_path = read_item("Path");
     char *path;
     FILE *fp;
     FILE *temp_file;

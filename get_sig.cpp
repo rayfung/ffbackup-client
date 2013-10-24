@@ -5,8 +5,6 @@
 #include <openssl/bio.h>
 #include <unistd.h>
 
-#define CFG_FILE "/home/william/git/ffbackup/client/project.cfg"
-
 get_sig::get_sig()
 {
 }
@@ -22,7 +20,7 @@ void get_sig::set_from_server(vector<file_info> &file_list, SSL *ssl)
     char buffer[max_buffer_size];
     FILE *sig_file;
     char file_name[32];
-    char *sig_dir = read_item(CFG_FILE, "Sig");
+    char *sig_dir = read_item("Sig");
     
     if(chdir(sig_dir) == -1)
     {

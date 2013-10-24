@@ -16,15 +16,15 @@
  * for example the cfgFile contains:
  * Project = /home/william/Scan
  * Server = localhost
- * the result of the read_item(cfgFile, "Project") return "/home/william/Scan"
+ * the result of the read_item("Project") return "/home/william/Scan"
  */
-char *read_item(char const *cfgFile, char const *item)
+char *read_item(const char *item)
 {
     const size_t MAX_BUFFER_SIZE = 2048;
     FILE *fp;
     char buffer[MAX_BUFFER_SIZE];
     char *dest, *result;
-    if((fp = fopen(cfgFile, "r") ) == NULL)
+    if((fp = fopen(CFG_PATH, "r") ) == NULL)
     {
         fputs("Can not open the configue file.\n",stderr);
         return NULL;
@@ -248,8 +248,7 @@ void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
 
 void get_file_sha1(const char* path, unsigned char *md)
 {
-    char CFG_FILE[] = "/home/william/git/ffbackup/client/project.cfg";
-    char *project_path = read_item(CFG_FILE, "Path");
+    char *project_path = read_item("Path");
     if(!project_path)
     {
         fputs("Read_item error.\n",stderr);

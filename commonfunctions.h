@@ -8,9 +8,11 @@
 #include <openssl/err.h>
 #include <vector>
 
+#define CFG_PATH "/home/william/git/ffbackup/client/project.cfg"
+
 using namespace std;
 
-char *read_item(char const *cfgFile, char const *item);
+char *read_item(const char *item);
 char *read_string(SSL *ssl);
 void ssl_read_wrapper(SSL *ssl, void *buffer, int num);
 void ssl_write_wrapper(SSL *ssl, const void *buffer, int num); 

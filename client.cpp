@@ -40,7 +40,6 @@ using namespace std;
 #define SSL_DFLT_HOST  "localhost"
 #define SSL_DFLT_PORT  "16903"
 #define MAX_BUFFER_SIZE 1024
-#define CFG_FILE "/home/william/git/ffbackup/client/project.cfg"
 
 extern char *optarg;
 static BIO  *bio_err = 0;
@@ -85,17 +84,17 @@ int main( int argc, char **argv )
     const SSL_METHOD *meth;
     SSL *ssl;
     BIO *sbio;
-    char *cafile = read_item(CFG_FILE,"CA_certificate_file");
+    char *cafile = read_item("CA_certificate_file");
     if(!cafile)
         err_exit("Can not find CA_certificate_file");
     char *cadir = NULL;
-    char *certfile = read_item(CFG_FILE, "Certificate_file");
+    char *certfile = read_item("Certificate_file");
     if(!certfile)
         err_exit("Can not find Certificate_file");
-    char *keyfile = read_item(CFG_FILE,"Private_key_file");
+    char *keyfile = read_item("Private_key_file");
     if(!keyfile)
         err_exit("Can not find Private_key_file");
-    const char *host = read_item(CFG_FILE,"Target_host");
+    const char *host = read_item("Target_host");
     if(!host)
         err_exit("Can not find Target_host");
     const char *port = SSL_DFLT_PORT;
@@ -341,8 +340,8 @@ void die(const char *msg)
 */
 void start_backup(SSL *ssl)
 {
-    char *project_name = read_item(CFG_FILE,"Project");
-    char *project_path = read_item(CFG_FILE, "Path");
+    char *project_name = read_item("Project");
+    char *project_path = read_item("Path");
     char buffer[2];
     char command = 0x01;
     buffer[0] = version;
@@ -402,7 +401,7 @@ void get_signature(SSL *ssl)
     int i = 0;
     char sig_name[32];
     FILE *sig_file;
-    char *sig_dir = read_item(CFG_FILE, "Sig");
+    char *sig_dir = read_item("Sig");
     string name;
     if(!sig_dir)
     {
@@ -474,7 +473,7 @@ void get_signature(SSL *ssl)
 
 void send_delta(SSL *ssl)
 {
-    char *project_path = read_item(CFG_FILE, "Path");
+    char *project_path = read_item("Path");
     uint32_t i = 0;
     char buffer[2];
     char command = 0x04;
@@ -511,7 +510,7 @@ void send_delta(SSL *ssl)
 
 void send_addition_fn(SSL *ssl)
 {
-    char *project_path = read_item(CFG_FILE, "Path");
+    char *project_path = read_item("Path");
     char buffer[2];
     char command = 0x06;
     uint32_t i = 0;
