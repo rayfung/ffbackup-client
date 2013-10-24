@@ -16,6 +16,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <map>
 
 #include "client.h"
 #include "helper.h"
@@ -58,6 +59,7 @@ static vector<file_info> diff_list;
 static vector<file_info> addition_list;
 static vector<file_info> deletion_list;
 static vector<file_info> delta_list;
+
 
 static char version = 2;
 
@@ -380,12 +382,9 @@ void get_hash(SSL *ssl)
     ssl_read_wrapper(ssl, &file_count, 4);
     file_count = ntoh32(file_count);
     i = 0;
-    printf("file count in get_hash:%d\n",file_count);
     while(i < file_count)
     {
-        printf("ready to read in get_hash\n");
         ssl_read_wrapper(ssl, sha, 20);
-        printf("finish readed in get_hash\n");
         diff_list.at(i).set_sha1(sha);
         i++;
     }
@@ -432,6 +431,7 @@ void get_signature(SSL *ssl)
     ssl_read_wrapper(ssl, &file_count, 4);
     file_count = ntoh32(file_count);
     i = 0;
+    printf("file_count in get_sig:%d\n",file_count);
     while(i < (int)file_count)
     {
         sprintf(sig_name, "%d", i);
@@ -447,6 +447,7 @@ void get_signature(SSL *ssl)
         }
         ssl_read_wrapper(ssl, &file_size, 8);
         file_size = ntoh64(file_size);
+        printf("file_size in get_sig :%d\n",file_size);
         while((total_read + MAX_BUFFER_SIZE) < file_size)
         {
             ssl_read_wrapper(ssl, sig_buffer, MAX_BUFFER_SIZE);
@@ -460,6 +461,7 @@ void get_signature(SSL *ssl)
         }
         fclose(sig_file);
         total_read = 0;
+        printf("finished %d\n",i);
         i++;
     }
     free(sig_dir);
@@ -585,14 +587,134 @@ void finish_backup(int sock, SSL *ssl)
 
 void client_get_prj(SSL *ssl)
 {
+    char buffer[2];
+    char command = 0x08;
+    uint32_t file_count = 0;
+    uint32_t i = 0;
+    char *prj_name;
+    vector<string> prj_list;
+
+    buffer[0] = version;
+    buffer[1] = command;
+
+    printf("command:%d\n",buffer[1]);
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_read_wrapper(ssl, buffer, 2);
+    ssl_read_wrapper(ssl, &file_count, 4);
+    file_count = ntoh32(file_count);
+    for(i = 0; i < file_count; i++)
+    {
+        prj_name = read_string(ssl);
+        prj_list.push_back(prj_name);
+        free(prj_name);
+    }
 }
 
 void client_get_time_line(SSL *ssl)
 {
+    char prj_name[] = "项目名称";
+    char buffer[2];
+    char command = 0x09;
+    uint32_t backup_id;
+    uint32_t backup_time;
+    uint32_t list_size;
+    uint32_t i = 0;
+    map <uint32_t, uint32_t> prj_list;
+    
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_write_wrapper(ssl, prj_name, strlen(prj_name) + 1);
+    ssl_read_wrapper(ssl, &list_size, 4);
+    list_size = ntoh32(list_size);
+    for(i = 0; i < list_size; i++)
+    {
+        ssl_read_wrapper(ssl, &backup_id, 4);
+        ssl_read_wrapper(ssl, &backup_time, 4);
+        backup_id = ntoh32(backup_id);
+        backup_time = ntoh32(backup_time);
+        prj_list.insert(pair<uint32_t, uint32_t>(backup_id, backup_time));
+    }
 }
 
 void client_restore(SSL *ssl)
 {
+    char prj_name[] = "项目名称";
+    char prj_restore_dir[] = "项目恢复路径";
+    uint32_t backup_id;
+    char buffer[2];
+    char command = 0x0A;
+    uint32_t list_size;
+    uint32_t i = 0;
+    uint64_t file_size = 0;
+    uint64_t total_read = 0;
+    char *file_path;
+    char file_type;
+    
+    //1.change to the project path
+    if(chdir(prj_restore_dir) == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+
+    //2.make a new dir to store the files restored from the server
+    if(mkdir("项目名称_备份序号",S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH) == -1)
+    {
+        fputs("Mkdir error.\n",stderr);
+        exit(1);
+    }
+    if(chdir("新建的目录") == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+
+    //3.begin to communicate with the server
+    buffer[0] = version;
+    buffer[1] = command;
+    ssl_write_wrapper(ssl, buffer, 2);
+    ssl_write_wrapper(ssl, prj_name, strlen(prj_name) + 1);
+    backup_id = hton32(backup_id);
+    ssl_write_wrapper(ssl, &backup_id, 4);
+    ssl_read_wrapper(ssl, &list_size, 4);
+    list_size = ntoh32(list_size);
+    for(i = 0; i < list_size; i++)
+    {
+        file_path = read_string(ssl);
+        ssl_read_wrapper(ssl, &file_type, 1);
+        if(file_type == 'd')
+        {
+            if(mkdir(file_path,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH) == -1)
+            {
+                fputs("Mkdir error.\n",stderr);
+                exit(1);
+            }
+        }
+        else
+        {
+            /*
+                ssl_read_wrapper(ssl, &file_size, 8);
+                file_size = ntoh64(file_size);
+                while((total_read + MAX_BUFFER_SIZE) < file_size)
+                {
+                    ssl_read_wrapper(ssl, sig_buffer, MAX_BUFFER_SIZE);
+                    fwrite(sig_buffer, 1, MAX_BUFFER_SIZE, sig_file);
+                    total_read += MAX_BUFFER_SIZE;
+                }
+                if(total_read != file_size)
+                {
+                    ssl_read_wrapper(ssl, sig_buffer, file_size - total_read);
+                    fwrite(sig_buffer, 1, file_size - total_read, sig_file);
+                }
+                fclose(sig_file);
+                total_read = 0;
+                i++;
+            }
+            */
+
+        }
+    }
 }
 
 
@@ -618,11 +740,11 @@ static void client_request(int sock, SSL *ssl, const char *file_path, const char
         {
             case 0x02:
                 get_hash(ssl);
-                code = 0x05;
+                code = 0x03;
                 break;
             case 0x03:
                 get_signature(ssl);
-                code = 0x04;
+                code = 0x05;
                 break;
             case 0x04:
                 send_delta(ssl);
