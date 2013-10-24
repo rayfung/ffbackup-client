@@ -8,8 +8,6 @@
 #include <openssl/err.h>
 #include <vector>
 
-#define CFG_PATH "/home/william/git/ffbackup/client/project.cfg"
-
 using namespace std;
 
 char *read_item(const char *item);

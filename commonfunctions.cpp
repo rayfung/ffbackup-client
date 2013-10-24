@@ -9,6 +9,8 @@
 #include "helper.h"
 #include "scan_dir.h"
 
+const char *CFG_PATH = "/etc/ffbackup/client.cfg";
+
 /**
  * read the configuration file
  * cfgFile: the configuration file to read

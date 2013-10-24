@@ -41,6 +41,7 @@ using namespace std;
 #define SSL_DFLT_PORT  "16903"
 #define MAX_BUFFER_SIZE 1024
 
+extern const char *CFG_PATH;
 extern char *optarg;
 static BIO  *bio_err = 0;
 static int  verbose = 0;
@@ -84,23 +85,15 @@ int main( int argc, char **argv )
     const SSL_METHOD *meth;
     SSL *ssl;
     BIO *sbio;
-    char *cafile = read_item("CA_certificate_file");
-    if(!cafile)
-        err_exit("Can not find CA_certificate_file");
+    char *cafile = NULL;
     char *cadir = NULL;
-    char *certfile = read_item("Certificate_file");
-    if(!certfile)
-        err_exit("Can not find Certificate_file");
-    char *keyfile = read_item("Private_key_file");
-    if(!keyfile)
-        err_exit("Can not find Private_key_file");
-    const char *host = read_item("Target_host");
-    if(!host)
-        err_exit("Can not find Target_host");
-    const char *port = SSL_DFLT_PORT;
+    char *certfile = NULL;
+    char *keyfile = NULL;
+    const char *host = NULL;
+    const char *port = NULL;
     int tlsv1 = 0;
 
-    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tvi:f:" )) != -1 )
+    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tvi:o:f:" )) != -1 )
     {
         switch(c)
         {
@@ -113,7 +106,8 @@ int main( int argc, char **argv )
                 printf( "-k <file>\tPrivate key file\n" );
                 printf( "-d <dir>\tCA certificate directory\n" );
                 printf("-i <instruction>\tInstruction name\n");
-                printf("-f <path>\tFile path\n");
+                printf("-o <path>\tOutput file path\n");
+                printf("-f <path>\tConfiguration file path\n");
                 printf( "-v\t\tVerbose\n" );
                 exit(0);
 
@@ -150,8 +144,12 @@ int main( int argc, char **argv )
                 if(!(instruction = strdup(optarg)))
                     err_exit("Out of memory");
                 break;
-            case 'f':
+            case 'o':
                 if(!(file_path = strdup(optarg)))
+                    err_exit("Out of memory");
+                break;
+            case 'f':
+                if(!(CFG_PATH = strdup(optarg)))
                     err_exit("Out of memory");
                 break;
 
@@ -159,6 +157,17 @@ int main( int argc, char **argv )
             case 'v':  verbose = 1;     break;
         }
     }
+
+    if(cafile == NULL)
+        cafile = read_item("CA_certificate_file");
+    if(certfile == NULL)
+        certfile = read_item("Certificate_file");
+    if(keyfile == NULL)
+        keyfile = read_item("Private_key_file");
+    if(host == NULL)
+        host = read_item("Target_host");
+    if(port == NULL)
+        port = read_item("Target_port");
 
     /* Initialize SSL Library */
     SSL_library_init();
