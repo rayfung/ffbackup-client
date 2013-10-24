@@ -91,15 +91,21 @@ char *read_string(SSL *ssl)
 
 void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
 {
-    int ret;
-    ret = SSL_read(ssl, buffer, num);
-    switch( SSL_get_error( ssl, ret ) )
+    int ret = 0;
+    int pos = 0;
+    char *ptr = (char *)buffer;
+    while(pos < num)
     {
-        case SSL_ERROR_NONE:
-            break;
-        default:
-            fputs("SSL_read error.\n",stderr);
-            exit(1);
+        ret = SSL_read(ssl, ptr + pos, num - pos);    
+        switch( SSL_get_error( ssl, ret ) )
+        {
+            case SSL_ERROR_NONE:
+                break;
+            default:
+                fputs("SSL_read error.\n",stderr);
+                exit(1);
+        }
+        pos += ret;
     }
 }
 

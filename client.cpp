@@ -436,7 +436,9 @@ void get_signature(SSL *ssl)
     {
         sprintf(sig_name, "%d", i);
         name.append(sig_dir);
+        name.append("/");
         name.append(sig_name);
+        printf("name in get_sig:%s\n",name.c_str());
         delta_list.at(i).set_sig_path(name.c_str());
         name.clear();
         sig_file = fopen(sig_name, "wb");
@@ -447,7 +449,6 @@ void get_signature(SSL *ssl)
         }
         ssl_read_wrapper(ssl, &file_size, 8);
         file_size = ntoh64(file_size);
-        printf("file_size in get_sig :%d\n",file_size);
         while((total_read + MAX_BUFFER_SIZE) < file_size)
         {
             ssl_read_wrapper(ssl, sig_buffer, MAX_BUFFER_SIZE);
@@ -461,7 +462,6 @@ void get_signature(SSL *ssl)
         }
         fclose(sig_file);
         total_read = 0;
-        printf("finished %d\n",i);
         i++;
     }
     free(sig_dir);
@@ -529,7 +529,7 @@ void send_addition_fn(SSL *ssl)
         i++;
     }
     ssl_read_wrapper(ssl, buffer, 2);
-    printf("command:%d\n",(int)buffer[1]);
+    printf("command in send_addition_fn:%d\n",(int)buffer[1]);
     free(project_path);
 }
 
@@ -551,6 +551,7 @@ void send_deletion(SSL *ssl)
         i++;
     }
     ssl_read_wrapper(ssl, buffer, 2);
+    printf("command in send_deletion:%d\n",(int)buffer[1]);
 }
 
 
@@ -563,7 +564,7 @@ void finish_backup(int sock, SSL *ssl)
     buffer[1] = command;
     ssl_write_wrapper(ssl, buffer, 2);
     ssl_read_wrapper(ssl, buffer, 2);
-    printf("command:%d\n",buffer[1]);
+    printf("command in finish_backup:%d\n",buffer[1]);
     if(SSL_shutdown( ssl ) == 0)
     {
         shutdown(sock, SHUT_WR);
@@ -650,6 +651,9 @@ void client_restore(SSL *ssl)
     uint64_t total_read = 0;
     char *file_path;
     char file_type;
+    FILE *file;
+    char file_buffer[MAX_BUFFER_SIZE];
+
     
     //1.change to the project path
     if(chdir(prj_restore_dir) == -1)
@@ -693,27 +697,29 @@ void client_restore(SSL *ssl)
         }
         else
         {
-            /*
-                ssl_read_wrapper(ssl, &file_size, 8);
-                file_size = ntoh64(file_size);
-                while((total_read + MAX_BUFFER_SIZE) < file_size)
-                {
-                    ssl_read_wrapper(ssl, sig_buffer, MAX_BUFFER_SIZE);
-                    fwrite(sig_buffer, 1, MAX_BUFFER_SIZE, sig_file);
-                    total_read += MAX_BUFFER_SIZE;
-                }
-                if(total_read != file_size)
-                {
-                    ssl_read_wrapper(ssl, sig_buffer, file_size - total_read);
-                    fwrite(sig_buffer, 1, file_size - total_read, sig_file);
-                }
-                fclose(sig_file);
-                total_read = 0;
-                i++;
+            file = fopen(file_path, "wb");
+            if(!file)
+            {
+                fputs("Fopen error.\n",stderr);
+                exit(1);
             }
-            */
-
+            ssl_read_wrapper(ssl, &file_size, 8);
+            file_size = ntoh64(file_size);
+            while((total_read + MAX_BUFFER_SIZE) < file_size)
+            {
+                ssl_read_wrapper(ssl, file_buffer, MAX_BUFFER_SIZE);
+                fwrite(file_buffer, 1, MAX_BUFFER_SIZE, file);
+                total_read += MAX_BUFFER_SIZE;
+            }
+            if(total_read != file_size)
+            {
+                ssl_read_wrapper(ssl, file_buffer, file_size - total_read);
+                fwrite(file_buffer, 1, file_size - total_read, file);
+            }
+            fclose(file);
+            total_read = 0;
         }
+        free(file_path);
     }
 }
 
