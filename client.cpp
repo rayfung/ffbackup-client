@@ -380,9 +380,12 @@ void get_hash(SSL *ssl)
     ssl_read_wrapper(ssl, &file_count, 4);
     file_count = ntoh32(file_count);
     i = 0;
+    printf("file count in get_hash:%d\n",file_count);
     while(i < file_count)
     {
+        printf("ready to read in get_hash\n");
         ssl_read_wrapper(ssl, sha, 20);
+        printf("finish readed in get_hash\n");
         diff_list.at(i).set_sha1(sha);
         i++;
     }
@@ -608,14 +611,14 @@ static void client_request(int sock, SSL *ssl, const char *file_path, const char
         fputs("Instruction has not been finished.\n",stderr);
         exit(1);
     }
-    char code = 0x06;
+    char code = 0x02;
     while(1)
     {
         switch(code)
         {
             case 0x02:
                 get_hash(ssl);
-                code = 0x03;
+                code = 0x05;
                 break;
             case 0x03:
                 get_signature(ssl);

@@ -161,8 +161,13 @@ void list_compare(vector<file_info>&local_list,vector<file_info>&server_list, \
             {
                 if(local_list.at(i).get_file_type() == server_list.at(j).get_file_type())
                 {
-                    diff_list.push_back(local_list.at(i));
-                    temp_list.erase(temp_list.begin() + j);
+                    if(local_list.at(i).get_file_type() == 'd')
+                        temp_list.erase(temp_list.begin() + j);
+                    else
+                    {
+                        diff_list.push_back(local_list.at(i));
+                        temp_list.erase(temp_list.begin() + j);
+                    }
                     break;
                 }
             }
@@ -237,12 +242,31 @@ void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
 
 void get_file_sha1(const char* path, unsigned char *md)
 {
+    char CFG_FILE[] = "/home/william/git/ffbackup/client/project.cfg";
+    char *project_path = read_item(CFG_FILE, "Path");
+    if(!project_path)
+    {
+        fputs("Read_item error.\n",stderr);
+        exit(1);
+    }
+    if(chdir(project_path) == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+
     int pf = open(path,O_RDONLY);
     if(pf == -1)
     {
         fputs("File can not be open.\n",stderr);
         exit(1);
     }
+    if(chdir("..") == -1)
+    {
+        fputs("Chdir error.\n",stderr);
+        exit(1);
+    }
+
     const size_t buffer_size = 2048;
     ssize_t ret;
     unsigned char data[buffer_size];
