@@ -6,3 +6,5 @@ cmake_install.cmake
 install_manifest.txt
 ffbackup-client
 project_list.txt
+*.cfg
+run.sh
