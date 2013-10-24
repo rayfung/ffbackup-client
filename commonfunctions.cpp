@@ -161,13 +161,16 @@ void list_compare(vector<file_info>&local_list,vector<file_info>&server_list, \
     size_t i = 0;
     size_t j = 0;
     vector<file_info> temp_list = server_list;
+    bool found;
+
     while(i < local_list.size())
     {
-        while(j < server_list.size())
+        found = false;
+        while(j < temp_list.size())
         {
-            if(strcmp(local_list.at(i).get_path(), server_list.at(j).get_path()) == 0)
+            if(strcmp(local_list.at(i).get_path(), temp_list.at(j).get_path()) == 0)
             {
-                if(local_list.at(i).get_file_type() == server_list.at(j).get_file_type())
+                if(local_list.at(i).get_file_type() == temp_list.at(j).get_file_type())
                 {
                     if(local_list.at(i).get_file_type() == 'd')
                         temp_list.erase(temp_list.begin() + j);
@@ -176,12 +179,13 @@ void list_compare(vector<file_info>&local_list,vector<file_info>&server_list, \
                         diff_list.push_back(local_list.at(i));
                         temp_list.erase(temp_list.begin() + j);
                     }
+                    found = true;
                     break;
                 }
             }
             j++;
         }
-        if(j == server_list.size())
+        if(!found)
             addition_list.push_back(local_list.at(i));
         i++;
         j = 0;
