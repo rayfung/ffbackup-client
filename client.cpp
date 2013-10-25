@@ -51,7 +51,7 @@ static int  ssl_err_exit( const char * );
 static void sigpipe_handle( int );
 static int  ip_connect(int type, int protocol, const char *host, const char *serv);
 static void check_certificate( SSL *, int );
-static void client_request(int sock, SSL *, const char *,const char *);
+static void client_request(int sock, SSL *);
 
 static vector<file_info> local_list;
 static vector<file_info> server_list;
@@ -79,8 +79,6 @@ static int password_cb( char *buf, int num, int rwflag, void *userdata )
 int main( int argc, char **argv )
 {
     int c,sock;
-    char *file_path = NULL;
-    char *instruction = NULL;
     SSL_CTX *ctx;
     const SSL_METHOD *meth;
     SSL *ssl;
@@ -93,7 +91,7 @@ int main( int argc, char **argv )
     const char *port = NULL;
     int tlsv1 = 0;
 
-    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tvi:o:f:" )) != -1 )
+    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tvf:" )) != -1 )
     {
         switch(c)
         {
@@ -139,14 +137,6 @@ int main( int argc, char **argv )
             case 'k':
                 if ( ! (keyfile = strdup( optarg )) )
                     err_exit( "Out of memory" );
-                break;
-            case 'i':
-                if(!(instruction = strdup(optarg)))
-                    err_exit("Out of memory");
-                break;
-            case 'o':
-                if(!(file_path = strdup(optarg)))
-                    err_exit("Out of memory");
                 break;
             case 'f':
                 if(!(CFG_PATH = strdup(optarg)))
@@ -233,7 +223,7 @@ int main( int argc, char **argv )
         printf( "Cipher: %s\n", SSL_get_cipher( ssl ) );
 
     /* Now make our request */
-    client_request(sock, ssl, file_path, instruction );
+    client_request(sock, ssl);
 
     /* Shutdown SSL connection */
     if(SSL_shutdown( ssl ) == 0)
@@ -738,16 +728,11 @@ void client_restore(SSL *ssl)
  * file_path: the spy program use it to store the information of the current program 
  * instruction: the instruction that the client want to excuate 
  */
-static void client_request(int sock, SSL *ssl, const char *file_path, const char *instruction)
+static void client_request(int sock, SSL *ssl)
 {
-    if(!strcmp(instruction, "backup"))
-        start_backup(ssl);
-    else
-    {
-        fputs("Instruction has not been finished.\n",stderr);
-        exit(1);
-    }
     char code = 0x02;
+
+    start_backup(ssl);
     while(1)
     {
         switch(code)
