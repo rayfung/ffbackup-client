@@ -494,9 +494,10 @@ void send_delta(SSL *ssl)
     buffer[1] = command;
     ssl_write_wrapper(ssl, buffer, 2);
     ssl_write_wrapper(ssl, &file_count, 4);
-    while(i < delta_list.size())
+    for(i = 0; i < delta_list.size(); ++i)
     {
-        to_send.send_delta(delta_list.at(i).get_path(), delta_list.at(i).get_sig_path(),ssl);
+        to_send.send_delta(delta_list.at(i).get_path(),
+                           delta_list.at(i).get_sig_path(), ssl);
     }
     ssl_read_wrapper(ssl, buffer, 2);
     free(project_path);
@@ -605,7 +606,7 @@ static void client_request(int sock, SSL *ssl)
                 break;
             case 0x03:
                 get_signature(ssl);
-                code = 0x05;
+                code = 0x04;
                 break;
             case 0x04:
                 send_delta(ssl);

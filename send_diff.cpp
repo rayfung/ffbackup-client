@@ -69,7 +69,8 @@ void send_diff::send_delta(const char* new_file_path, const char *sig_file_path,
     while(!feof(delta_file))
     {
         result = fread(delta_buffer, 1, max_buffer_size, delta_file);
-        ssl_write_wrapper(ssl, delta_buffer, result);
+        if(result > 0)
+            ssl_write_wrapper(ssl, delta_buffer, result);
     }
 
     rs_log_stats(&stats);
@@ -77,6 +78,5 @@ void send_diff::send_delta(const char* new_file_path, const char *sig_file_path,
     fclose(sig_file);
     fclose(new_file);
     fclose(delta_file);
-    return ;
 }
 
