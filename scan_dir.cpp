@@ -95,8 +95,9 @@ void scan_dir::scan_the_dir(const char *dir, int parent_index)
             local_list.push_back(to_store);
             scan_the_dir(entry->d_name, local_list.size() - 1);
         }
-        else
+        else if(S_ISREG(statbuf.st_mode))
         {
+           
             string name;
             if(parent_index != -1)
             {
