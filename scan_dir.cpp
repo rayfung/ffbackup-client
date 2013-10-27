@@ -97,7 +97,6 @@ void scan_dir::scan_the_dir(const char *dir, int parent_index)
         }
         else if(S_ISREG(statbuf.st_mode))
         {
-           
             string name;
             if(parent_index != -1)
             {
