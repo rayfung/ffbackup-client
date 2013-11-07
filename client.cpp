@@ -624,7 +624,6 @@ static void client_request(int sock, SSL *ssl)
                 code = 0x08;
                 break;
             default:
-                fputs("Error code to excuate.\n",stderr);
                 exit(1);
         }
     }

@@ -17,10 +17,4 @@ void send_addition_fn(SSL *ssl);
 
 void finish_backup(int sock, SSL *ssl);
 
-void client_get_prj(SSL *ssl);
-
-void client_get_time_line(SSL *ssl);
-
-void client_restore(SSL *ssl);
-
 #endif
