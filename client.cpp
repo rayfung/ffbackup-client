@@ -26,7 +26,6 @@
 #include "scan_dir.h"
 #include "send_addition.h"
 #include "send_diff.h"
-#include "restore.h"
 
 #include <librsync.h>
 
