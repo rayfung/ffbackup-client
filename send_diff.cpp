@@ -11,13 +11,8 @@
 #include <openssl/err.h>
 #include <librsync.h>
 
-send_diff::send_diff()
-{
-}
-
 void send_diff::send_delta(const char* new_file_path, const char *sig_file_path, SSL *ssl)
 {
-    ffbuffer store;
     FILE *sig_file;
     FILE *new_file;
     FILE *delta_file;

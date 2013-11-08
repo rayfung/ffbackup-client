@@ -8,7 +8,6 @@
 class send_diff
 {
 public:
-    send_diff();
     void send_delta(const char *new_file_path, const char *sig_file_path, SSL *ssl);
 };
 #endif
