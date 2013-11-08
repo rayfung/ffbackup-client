@@ -21,11 +21,7 @@
 #include "client.h"
 #include "helper.h"
 #include "ffbuffer.h"
-#include "commonfunctions.h"
 #include "file_info.h"
-#include "scan_dir.h"
-#include "send_addition.h"
-#include "send_diff.h"
 
 #include <librsync.h>
 
@@ -453,7 +449,6 @@ void send_delta(SSL *ssl)
     char buffer[2];
     char command = 0x04;
     uint32_t file_count = 0;
-    send_diff to_send;
     if(!project_path)
     {
         fputs("Read_item error.\n",stderr);
@@ -472,7 +467,7 @@ void send_delta(SSL *ssl)
     ssl_write_wrapper(ssl, &file_count, 4);
     for(i = 0; i < delta_list.size(); ++i)
     {
-        to_send.send_delta(delta_list.at(i).get_path(),
+        send_file_delta(delta_list.at(i).get_path(),
                            delta_list.at(i).get_sig_path(), ssl);
     }
     ssl_read_wrapper(ssl, buffer, 2);
@@ -491,7 +486,6 @@ void send_addition_fn(SSL *ssl)
     char command = 0x06;
     uint32_t i = 0;
     uint32_t file_count = 0;
-    send_addition to_send(project_path);
     buffer[0] = version;
     buffer[1] = command;
     ssl_write_wrapper(ssl, buffer, 2);
@@ -500,7 +494,7 @@ void send_addition_fn(SSL *ssl)
     ssl_write_wrapper(ssl, &file_count, 4);
     while(i < addition_list.size())
     {
-        to_send.send_to_server(addition_list.at(i).get_path(), ssl);
+        send_file_addition(project_path, addition_list.at(i).get_path(), ssl);
         i++;
     }
     ssl_read_wrapper(ssl, buffer, 2);
