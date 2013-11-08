@@ -15,56 +15,6 @@
 
 using namespace std;
 
-
-scan_dir::scan_dir(const char *dir_path)
-{
-    size_t length;
-    length = strlen(dir_path);
-    if(!length)
-    {
-        fputs("Dir_path is NULL.\n",stderr);
-        exit(1);
-    }
-    else
-    {
-        this->dir_path = (char *)malloc(sizeof(char) * (length + 1));
-        strcpy(this->dir_path, dir_path);
-    }
-}
-
-void scan_dir::sha1(const char* path, unsigned char *md)
-{
-    int pf = open(path,O_RDONLY);
-    if(pf == -1)
-    {
-        fputs("File can not be open.\n",stderr);
-        exit(1);
-    }
-    const size_t buffer_size = 2048;
-    ssize_t ret;
-    unsigned char data[buffer_size];
-    SHA_CTX ctx;
-    if(SHA1_Init(&ctx) == 0)
-    {
-        fputs("SHA1_Init error.\n",stderr);
-        exit(1);
-    }
-    while( (ret = read(pf, data, buffer_size)) > 0)
-    {
-        if(SHA1_Update(&ctx,data,ret) == 0)
-        {
-            fputs("SHA1_Update error.\n",stderr);
-            exit(1);
-        }
-    }
-    if(SHA1_Final(md, &ctx) == 0)
-    {
-        fputs("SHA1_Final error.\n",stderr);
-        exit(1);
-    }
-    return ;
-}
-
 //scan the local project director
 void scan_dir::scan_the_dir(const char *dir, int parent_index)
 {

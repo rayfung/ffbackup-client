@@ -149,7 +149,7 @@ vector<file_info> get_server_list(SSL *ssl)
 vector<file_info> get_local_list(const char *project_path)
 {
     vector<file_info> file_list;
-    scan_dir to_scan(project_path);
+    scan_dir to_scan;
     to_scan.scan_the_dir(project_path, -1);
     file_list = to_scan.get_local_list();
     return file_list;
