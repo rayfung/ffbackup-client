@@ -101,7 +101,7 @@ char *read_item(const char *item)
     char *dest, *result;
     if((fp = fopen(CFG_PATH, "r") ) == NULL)
     {
-        fputs("Can not open the configue file.\n",stderr);
+        fputs("Can not open configuration file.\n", stderr);
         return NULL;
     }
     while(fgets(buffer, MAX_BUFFER_SIZE, fp) != NULL)
