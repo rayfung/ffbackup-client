@@ -1,7 +1,6 @@
 project(ffbackup-client)
 cmake_minimum_required(VERSION 2.6)
 aux_source_directory(. src_list)
-#set(src_list client.cpp commonfunctions.cpp ffbuffer.cpp helper.cpp sendinfo.cpp writedata.cpp writediff.cpp restore.cpp)
 add_executable(${PROJECT_NAME} ${src_list})
 target_link_libraries(${PROJECT_NAME} ssl rsync)
 add_definitions(-g -Wall -D_FILE_OFFSET_BITS=64)
