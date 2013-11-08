@@ -397,20 +397,8 @@ void get_signature(SSL *ssl)
     uint64_t total_read = 0;
     char sig_buffer[MAX_BUFFER_SIZE];
     int i = 0;
-    char sig_name[32];
-    FILE *sig_file;
-    char *sig_dir = read_item("Sig");
-    string name;
-    if(!sig_dir)
-    {
-        fputs("Read_item error.\n",stderr);
-        exit(1);
-    }
-    if(chdir(sig_dir) == -1)
-    {
-        fputs("Chdir error.\n",stderr);
-        exit(1);
-    }
+    char sig_name[256];
+    int sig_fd;
 
     buffer[0] = version;
     buffer[1] = command;
@@ -431,41 +419,30 @@ void get_signature(SSL *ssl)
     printf("file_count in get_sig:%d\n",file_count);
     while(i < (int)file_count)
     {
-        sprintf(sig_name, "%d", i);
-        name.append(sig_dir);
-        name.append("/");
-        name.append(sig_name);
-        printf("name in get_sig:%s\n",name.c_str());
-        delta_list.at(i).set_sig_path(name.c_str());
-        name.clear();
-        sig_file = fopen(sig_name, "wb");
-        if(!sig_file)
+        strcpy(sig_name, "/tmp/ffbackup-client-XXXXXX");
+        sig_fd = mkstemp(sig_name);
+        if(sig_fd < 0)
         {
-            fputs("Fopen error.\n",stderr);
+            perror("mkstemp");
             exit(1);
         }
+        delta_list.at(i).set_sig_path(sig_name);
         ssl_read_wrapper(ssl, &file_size, 8);
         file_size = ntoh64(file_size);
         while((total_read + MAX_BUFFER_SIZE) < file_size)
         {
             ssl_read_wrapper(ssl, sig_buffer, MAX_BUFFER_SIZE);
-            fwrite(sig_buffer, 1, MAX_BUFFER_SIZE, sig_file);
+            write(sig_fd, sig_buffer, MAX_BUFFER_SIZE);
             total_read += MAX_BUFFER_SIZE;
         }
         if(total_read != file_size)
         {
             ssl_read_wrapper(ssl, sig_buffer, file_size - total_read);
-            fwrite(sig_buffer, 1, file_size - total_read, sig_file);
+            write(sig_fd, sig_buffer, file_size - total_read);
         }
-        fclose(sig_file);
+        close(sig_fd);
         total_read = 0;
         i++;
-    }
-    free(sig_dir);
-    if(chdir("..") == -1)
-    {
-        fputs("Chdir error.\n",stderr);
-        exit(1);
     }
 }
 
