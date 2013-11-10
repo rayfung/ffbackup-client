@@ -60,7 +60,7 @@ static char version = 2;
 
 static int password_cb( char *buf, int num, int rwflag, void *userdata )
 {
-    char password[] = "client";
+    char password[] = "ffbackup";
     int len = strlen( password );
 
     if ( num < len + 1 )
