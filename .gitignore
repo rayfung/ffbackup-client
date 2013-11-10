@@ -10,3 +10,5 @@ project_list.txt
 run.sh
 CMakeLists.txt.user
 ffbackup-client.cbp
+*.crt
+*.key
