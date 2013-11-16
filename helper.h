@@ -25,7 +25,6 @@ uint64_t ntoh64(uint64_t net);
 
 uint64_t hton64(uint64_t host);
 
-char *read_item(const char *item);
 char *read_string(SSL *ssl);
 void ssl_read_wrapper(SSL *ssl, void *buffer, int num);
 void ssl_write_wrapper(SSL *ssl, const void *buffer, int num);

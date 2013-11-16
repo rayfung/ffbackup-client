@@ -22,6 +22,7 @@
 #include "helper.h"
 #include "ffbuffer.h"
 #include "file_info.h"
+#include "config.h"
 
 #include <librsync.h>
 
@@ -39,7 +40,6 @@ using namespace std;
 extern const char *CFG_PATH;
 extern char *optarg;
 static BIO  *bio_err = 0;
-static int  verbose = 0;
 
 static int  err_exit( const char * );
 static int  ssl_err_exit( const char * );
@@ -55,8 +55,8 @@ static vector<file_info> addition_list;
 static vector<file_info> deletion_list;
 static vector<file_info> delta_list;
 
-
 static char version = 2;
+client_config g_config;
 
 static int password_cb( char *buf, int num, int rwflag, void *userdata )
 {
@@ -86,73 +86,27 @@ int main( int argc, char **argv )
     const char *port = NULL;
     int tlsv1 = 0;
 
-    while( (c = getopt( argc, argv, "c:e:k:d:hp:t:Tvf:" )) != -1 )
+    while( (c = getopt( argc, argv, "hTf:" )) != -1 )
     {
         switch(c)
         {
             case 'h':
                 printf( "-T\t\tTLS v1 protocol\n" );
-                printf( "-t <host>\tTarget host name (default 'localhost')\n" );
-                printf( "-p <port>\tTarget port number (default 16903)\n" );
-                printf( "-c <file>\tCA certificate file\n" );
-                printf( "-e <file>\tCertificate file\n" );
-                printf( "-k <file>\tPrivate key file\n" );
-                printf( "-d <dir>\tCA certificate directory\n" );
                 printf("-i <instruction>\tInstruction name\n");
-                printf("-o <path>\tOutput file path\n");
                 printf("-f <path>\tConfiguration file path\n");
-                printf( "-v\t\tVerbose\n" );
                 exit(0);
 
-            case 't':
-                if ( ! (host = strdup( optarg )) )
-                    err_exit( "Out of memory" );
-                break;
-
-            case 'p':
-                if ( ! (port = strdup( optarg )) )
-                    err_exit( "Invalid port specified" );
-                break;
-
-            case 'd':
-                if ( ! (cadir = strdup( optarg )) )
-                    err_exit( "Out of memory" );
-                break;
-
-            case 'c':
-                if ( ! (cafile = strdup( optarg )) )
-                    err_exit( "Out of memory" );
-                break;
-
-            case 'e':   /* Certificate File */
-                if ( ! (certfile = strdup( optarg )) )
-                    err_exit( "Out of memory" );
-                break;
-
-            case 'k':
-                if ( ! (keyfile = strdup( optarg )) )
-                    err_exit( "Out of memory" );
-                break;
             case 'f':
                 if(!(CFG_PATH = strdup(optarg)))
                     err_exit("Out of memory");
                 break;
 
             case 'T':  tlsv1 = 1;       break;
-            case 'v':  verbose = 1;     break;
         }
     }
 
-    if(cafile == NULL)
-        cafile = read_item("CA_certificate_file");
-    if(certfile == NULL)
-        certfile = read_item("Certificate_file");
-    if(keyfile == NULL)
-        keyfile = read_item("Private_key_file");
-    if(host == NULL)
-        host = read_item("Target_host");
-    if(port == NULL)
-        port = read_item("Target_port");
+    if(!g_config.read_config(CFG_PATH))
+        exit(1);
 
     /* Initialize SSL Library */
     SSL_library_init();
@@ -197,25 +151,11 @@ int main( int argc, char **argv )
     sbio = BIO_new_socket( sock, BIO_NOCLOSE );
     SSL_set_bio( ssl, sbio, sbio );
 
-    if ( verbose )
-    {
-        const char *str;
-        int i;
-
-        printf( "Ciphers: \n" );
-
-        for( i = 0; (str = SSL_get_cipher_list( ssl, i )); i++ )
-            printf( "    %s\n", str );
-    }
-
     /* Perform SSL client connect handshake */
     if ( SSL_connect( ssl ) <= 0 )
         ssl_err_exit( "SSL connect error" );
 
     check_certificate( ssl, 1 );
-
-    if ( verbose )
-        printf( "Cipher: %s\n", SSL_get_cipher( ssl ) );
 
     /* Now make our request */
     client_request(sock, ssl);
@@ -334,8 +274,8 @@ void die(const char *msg)
 */
 void start_backup(SSL *ssl)
 {
-    char *project_name = read_item("Project");
-    char *project_path = read_item("Path");
+    const char *project_name = g_config.get_project_name();
+    const char *project_path = g_config.get_backup_path();
     char buffer[2];
     char command = 0x01;
     buffer[0] = version;
@@ -347,8 +287,6 @@ void start_backup(SSL *ssl)
     local_list = get_local_list(project_path);
     list_compare(local_list, server_list, addition_list, diff_list, deletion_list);
     simplify_deletion_list(deletion_list);
-    free(project_path);
-    free(project_name);
 }
 
 void get_hash(SSL *ssl)
@@ -444,16 +382,11 @@ void get_signature(SSL *ssl)
 
 void send_delta(SSL *ssl)
 {
-    char *project_path = read_item("Path");
+    const char *project_path = g_config.get_backup_path();
     uint32_t i = 0;
     char buffer[2];
     char command = 0x04;
     uint32_t file_count = 0;
-    if(!project_path)
-    {
-        fputs("Read_item error.\n",stderr);
-        exit(1);
-    }
     if(chdir(project_path) == -1)
     {
         fputs("Chdir error.\n",stderr);
@@ -471,7 +404,6 @@ void send_delta(SSL *ssl)
                            delta_list.at(i).get_sig_path(), ssl);
     }
     ssl_read_wrapper(ssl, buffer, 2);
-    free(project_path);
     if(chdir("..") == -1)
     {
         fputs("Chdir error.\n",stderr);
@@ -481,7 +413,7 @@ void send_delta(SSL *ssl)
 
 void send_addition_fn(SSL *ssl)
 {
-    char *project_path = read_item("Path");
+    const char *project_path = g_config.get_backup_path();
     char buffer[2];
     char command = 0x06;
     uint32_t i = 0;
@@ -499,7 +431,6 @@ void send_addition_fn(SSL *ssl)
     }
     ssl_read_wrapper(ssl, buffer, 2);
     printf("command in send_addition_fn:%d\n",(int)buffer[1]);
-    free(project_path);
 }
 
 void send_deletion(SSL *ssl)

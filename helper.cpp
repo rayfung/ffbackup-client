@@ -12,11 +12,13 @@
 #include <librsync.h>
 #include "ffbuffer.h"
 #include "helper.h"
+#include "config.h"
 
 #define FF_LITTLE_ENDIAN 0
 #define FF_BIG_ENDIAN 1
 
 const char *CFG_PATH = "/etc/ffbackup/client.cfg";
+extern client_config g_config;
 
 void dump_data(void *data, size_t size)
 {
@@ -82,51 +84,6 @@ uint64_t hton64(uint64_t host)
             ptr_u[i] = ptr_host[j];
     }
     return u;
-}
-
-/**
- * read the configuration file
- * cfgFile: the configuration file to read
- * item: the item should be read in the file
- * for example the cfgFile contains:
- * Project = /home/william/Scan
- * Server = localhost
- * the result of the read_item("Project") return "/home/william/Scan"
- */
-char *read_item(const char *item)
-{
-    const size_t MAX_BUFFER_SIZE = 2048;
-    FILE *fp;
-    char buffer[MAX_BUFFER_SIZE];
-    char *dest, *result;
-    if((fp = fopen(CFG_PATH, "r") ) == NULL)
-    {
-        fputs("Can not open configuration file.\n", stderr);
-        return NULL;
-    }
-    while(fgets(buffer, MAX_BUFFER_SIZE, fp) != NULL)
-    {
-        if(strncmp(item, buffer, strlen(item))==0)
-        {
-            dest = strstr(buffer, "=") + 2;
-            if((result=(char *)malloc(strlen(dest))) == NULL)
-            {
-                fputs("Malloc error.\n",stderr);
-                fclose(fp);
-                return NULL;
-            }
-            size_t length = strlen(dest);
-            memcpy(result, dest, length);
-            //result = dest;
-            result[length - 1] = '\0';
-            fclose(fp);
-            return (result);
-        }
-        continue;
-    }
-    fclose(fp);
-    fputs("Can not find the item\n",stderr);
-    return NULL;
 }
 
 char *read_string(SSL *ssl)
@@ -373,12 +330,7 @@ void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
 
 void get_file_sha1(const char* path, unsigned char *md)
 {
-    char *project_path = read_item("Path");
-    if(!project_path)
-    {
-        fputs("Read_item error.\n",stderr);
-        exit(1);
-    }
+    const char *project_path = g_config.get_backup_path();
     if(chdir(project_path) == -1)
     {
         fputs("Chdir error.\n",stderr);
@@ -419,7 +371,6 @@ void get_file_sha1(const char* path, unsigned char *md)
         fputs("SHA1_Final error.\n",stderr);
         exit(1);
     }
-    return ;
 }
 
 void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *ssl)
