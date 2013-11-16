@@ -78,10 +78,10 @@ int main( int argc, char **argv )
     const SSL_METHOD *meth;
     SSL *ssl;
     BIO *sbio;
-    char *cafile = NULL;
-    char *cadir = NULL;
-    char *certfile = NULL;
-    char *keyfile = NULL;
+    const char *cafile = NULL;
+    const char *cadir = NULL;
+    const char *certfile = NULL;
+    const char *keyfile = NULL;
     const char *host = NULL;
     const char *port = NULL;
     int tlsv1 = 0;
@@ -107,6 +107,12 @@ int main( int argc, char **argv )
 
     if(!g_config.read_config(CFG_PATH))
         exit(1);
+
+    host     = g_config.get_host();
+    port     = g_config.get_service();
+    cafile   = g_config.get_ca_file();
+    certfile = g_config.get_cert_file();
+    keyfile  = g_config.get_key_file();
 
     /* Initialize SSL Library */
     SSL_library_init();
