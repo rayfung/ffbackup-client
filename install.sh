@@ -15,7 +15,7 @@ echo 'copying files...'
 mkdir -p "$INST_PATH"
 mkdir -p "$CONFIG_PATH"
 cp -v -f -t "$INST_PATH" ffbackup-client ffbackup-restore ffbackup-restore-gui
-cp -v -f -t "$CONFIG_PATH" client.cfg
+cp -v -f -t "$CONFIG_PATH" client.cfg.fixme
 
 echo
 echo 'creating user ffbackup'
