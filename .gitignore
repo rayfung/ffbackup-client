@@ -6,9 +6,10 @@ cmake_install.cmake
 install_manifest.txt
 ffbackup-client
 project_list.txt
-*.cfg
 run.sh
 CMakeLists.txt.user
 ffbackup-client.cbp
 *.crt
 *.key
+ffbackup-restore
+ffbackup-restore-gui
