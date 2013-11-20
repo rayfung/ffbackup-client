@@ -397,6 +397,7 @@ void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *
         exit(1);
     }
 
+    fflush(delta_file);
     do
     {
         struct stat buf;
