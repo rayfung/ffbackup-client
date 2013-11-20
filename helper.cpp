@@ -92,7 +92,8 @@ char *read_string(SSL *ssl)
     char buf[1];
     int ret;
     size_t ffbuffer_length = 0;
-    char *pass;
+    char *str;
+
     while(1)
     {
         ret = SSL_read(ssl, buf, 1);
@@ -101,22 +102,22 @@ char *read_string(SSL *ssl)
             case SSL_ERROR_NONE:
                 break;
             default:
-                fputs("SSL_write error.\n",stderr);
+                fputs("SSL_write error.\n", stderr);
                 exit(1);
         }
-        store.push_back(buf,1);
+        store.push_back(buf, 1);
         if(!buf[0])
             break;
     }
     ffbuffer_length = store.get_size();
-    pass = (char *)malloc(ffbuffer_length);
-    if(!pass)
+    str = (char *)malloc(ffbuffer_length);
+    if(!str)
     {
-        fputs("Malloc error.\n",stderr);
+        fputs("malloc error.\n", stderr);
         exit(1);
     }
-    store.get(pass, 0, ffbuffer_length);
-    return pass;
+    store.get(str, 0, ffbuffer_length);
+    return str;
 }
 
 void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
