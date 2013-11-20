@@ -370,7 +370,6 @@ void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *
     size_t result = 0;
     const size_t max_buffer_size = 1024;
     char delta_buffer[max_buffer_size];
-    long lsize = 0;
     uint64_t delta_length = 0;
     rs_result ret;
     rs_signature_t *sumset;
@@ -397,16 +396,20 @@ void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *
         puts(rs_strerror(ret));
         exit(1);
     }
-    fseek (delta_file , 0 , SEEK_END);
-    lsize = ftell(delta_file);
-    if(lsize < 0)
+
+    do
     {
-        fputs("Delta_file is wrong.\n",stderr);
-        exit(1);
-    }
+        struct stat buf;
+
+        if(fstat(fileno(delta_file), &buf) < 0)
+        {
+            perror("fstat");
+            exit(1);
+        }
+        delta_length = (uint64_t)buf.st_size;
+    }while(0);
 
     rewind(delta_file);
-    delta_length = (uint64_t)lsize;
     delta_length = hton64(delta_length);
 
     ssl_write_wrapper(ssl, new_file_path, strlen(new_file_path) + 1);
