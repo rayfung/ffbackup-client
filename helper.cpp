@@ -179,51 +179,38 @@ vector<file_info> get_server_list(SSL *ssl)
     return file_list;
 }
 
-void _scan_dir(const char *dir, int parent_index, vector<file_info> &local_list)
+void _scan_dir(const std::string &base, std::string dir, vector<file_info> *result)
 {
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
 
-    if((dp = opendir(dir)) == NULL || chdir(dir) < 0)
-    {
-        if(parent_index == -1)
-            fputs("can not scan the directory.\n", stderr);
+    dp = opendir((base + dir).c_str());
+    if(dp == NULL)
         return;
-    }
     while((entry = readdir(dp)) != NULL)
     {
-        lstat(entry->d_name, &statbuf);
+        std::string path;
+
+        path = dir + std::string(entry->d_name);
+        if(lstat((base + path).c_str(), &statbuf) < 0)
+            continue;
         if(S_ISDIR(statbuf.st_mode))
         {
-            if(strcmp(".",entry->d_name) == 0 || strcmp("..",entry->d_name) == 0)
+            if(strcmp(".", entry->d_name) == 0 ||
+                    strcmp("..", entry->d_name) == 0)
                 continue;
-            string name;
-            if(parent_index != -1)
-            {
-                name = local_list.at(parent_index).get_path();
-                name += "/";
-            }
-            name += entry->d_name;
-            local_list.push_back(file_info(name.c_str(),'d'));
-            _scan_dir(entry->d_name, local_list.size() - 1, local_list);
+
+            file_info info(path.c_str(), 'd');
+            result->push_back(info);
+
+            _scan_dir(base, path + "/", result);
         }
         else if(S_ISREG(statbuf.st_mode))
         {
-            string name;
-            if(parent_index != -1)
-            {
-                name = local_list.at(parent_index).get_path();
-                name += "/";
-            }
-            name += entry->d_name;
-            local_list.push_back(file_info(name.c_str(),'f'));
+            file_info info(path.c_str(), 'f');
+            result->push_back(info);
         }
-    }
-    if(chdir("..") == -1)
-    {
-        fputs("chdir error.\n", stderr);
-        exit(1);
     }
     closedir(dp);
 }
@@ -232,7 +219,7 @@ vector<file_info> get_local_list(const char *project_path)
 {
     vector<file_info> file_list;
 
-    _scan_dir(project_path, -1, file_list);
+    _scan_dir(std::string(project_path) + "/", std::string(), &file_list);
     return file_list;
 }
 
