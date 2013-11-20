@@ -157,13 +157,15 @@ void ssl_write_wrapper(SSL *ssl, const void *buffer, int num)
     }
 }
 
+//获取一个文件列表（每个文件有路径和文件类型两个属性）
 vector<file_info> get_server_list(SSL *ssl)
 {
     vector<file_info> file_list;
     uint32_t file_count = 0;
-    int i= 0;
+    int i = 0;
     char file_type;
     char *file_path;
+
     ssl_read_wrapper(ssl, &file_count, 4);
     file_count = ntoh32(file_count);
     for(i = 0; i < (int)file_count; i++)
@@ -177,16 +179,17 @@ vector<file_info> get_server_list(SSL *ssl)
     return file_list;
 }
 
-void _scan_the_dir(const char *dir, int parent_index, vector<file_info> &local_list)
+void _scan_dir(const char *dir, int parent_index, vector<file_info> &local_list)
 {
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
+
     if((dp = opendir(dir)) == NULL || chdir(dir) < 0)
     {
         if(parent_index == -1)
-            fputs("Can not scan the director.\n",stderr);
-        return ;
+            fputs("can not scan the directory.\n", stderr);
+        return;
     }
     while((entry = readdir(dp)) != NULL)
     {
@@ -202,9 +205,8 @@ void _scan_the_dir(const char *dir, int parent_index, vector<file_info> &local_l
                 name += "/";
             }
             name += entry->d_name;
-            file_info to_store(name.c_str(),'d');
-            local_list.push_back(to_store);
-            _scan_the_dir(entry->d_name, local_list.size() - 1, local_list);
+            local_list.push_back(file_info(name.c_str(),'d'));
+            _scan_dir(entry->d_name, local_list.size() - 1, local_list);
         }
         else if(S_ISREG(statbuf.st_mode))
         {
@@ -215,13 +217,12 @@ void _scan_the_dir(const char *dir, int parent_index, vector<file_info> &local_l
                 name += "/";
             }
             name += entry->d_name;
-            file_info to_store(name.c_str(),'f');
-            local_list.push_back(to_store);
+            local_list.push_back(file_info(name.c_str(),'f'));
         }
     }
     if(chdir("..") == -1)
     {
-        fputs("Chdir error.\n",stderr);
+        fputs("chdir error.\n", stderr);
         exit(1);
     }
     closedir(dp);
@@ -230,7 +231,8 @@ void _scan_the_dir(const char *dir, int parent_index, vector<file_info> &local_l
 vector<file_info> get_local_list(const char *project_path)
 {
     vector<file_info> file_list;
-    _scan_the_dir(project_path, -1, file_list);
+
+    _scan_dir(project_path, -1, file_list);
     return file_list;
 }
 
@@ -273,6 +275,9 @@ void list_compare(vector<file_info>&local_list, vector<file_info>&server_list,
     deletion_list = temp_list;
 }
 
+//列表中的任意目录里面的文件都应该从列表中删除
+//比如列表  {"src", "src/helper.cpp", "src/build", "LICENSE"}
+//可简化为  {"src", "LICENSE"}
 void simplify_deletion_list(vector<file_info>&deletion_list)
 {
     vector<file_info> temp_list = deletion_list;
@@ -281,6 +286,7 @@ void simplify_deletion_list(vector<file_info>&deletion_list)
     size_t buffer_length = 0;
     size_t i = 0;
     size_t j = 0;
+
     while(i < temp_list.size())
     {
         if(temp_list.at(i).get_file_type() == 'd')
