@@ -295,9 +295,7 @@ void simplify_deletion_list(vector<file_info>&deletion_list)
             while( j < deletion_list.size())
             {
                 if(strncmp(prefix.data(), deletion_list.at(j).get_path(), prefix.size()) == 0)
-                {
                     deletion_list.erase(deletion_list.begin() + j);
-                }
                 else
                     j++;
             }
@@ -306,31 +304,20 @@ void simplify_deletion_list(vector<file_info>&deletion_list)
     }
 }
 
+//找出 diff_list 中内容有变化的文件并插入到 delta_list 里面
 void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
 {
     const size_t md_length = 20;
     unsigned char *sha;
-    unsigned char temp[md_length];
+    unsigned char md[md_length];
     unsigned int i = 0;
-    unsigned int j = 0;
-    sha = (unsigned char *)malloc(sizeof(unsigned char) * 20);
-    if(!sha)
-    {
-        fputs("Malloc error.\n",stderr);
-        exit(1);
-    }
+
     for(i = 0; i < diff_list.size(); i++)
     {
         sha = diff_list.at(i).get_sha1();
-        get_file_sha1(diff_list.at(i).get_path(), temp);
-        for(j = 0; j < md_length; j++)
-        {
-            if(temp[j] == sha[j]) continue;
-            else break;
-        }
-        if(j < 20)
+        get_file_sha1(diff_list.at(i).get_path(), md);
+        if(memcmp(sha, md, md_length) != 0)
             delta_list.push_back(diff_list.at(i));
-        j = 0;
     }
 }
 
