@@ -281,9 +281,6 @@ void list_compare(vector<file_info>&local_list, vector<file_info>&server_list,
 void simplify_deletion_list(vector<file_info>&deletion_list)
 {
     vector<file_info> temp_list = deletion_list;
-    const size_t max_buffer_size = 1024;
-    char buffer[max_buffer_size];
-    size_t buffer_length = 0;
     size_t i = 0;
     size_t j = 0;
 
@@ -291,14 +288,13 @@ void simplify_deletion_list(vector<file_info>&deletion_list)
     {
         if(temp_list.at(i).get_file_type() == 'd')
         {
-            strcpy(buffer, temp_list.at(i).get_path());
-            buffer_length = strlen(buffer);
-            strcpy(&buffer[buffer_length],"/");
-            buffer_length++;
+            std::string prefix(temp_list.at(i).get_path());
+
+            prefix += "/";
             j = 0;
             while( j < deletion_list.size())
             {
-                if(strncmp(buffer, deletion_list.at(j).get_path(), buffer_length) == 0)
+                if(strncmp(prefix.data(), deletion_list.at(j).get_path(), prefix.size()) == 0)
                 {
                     deletion_list.erase(deletion_list.begin() + j);
                 }
