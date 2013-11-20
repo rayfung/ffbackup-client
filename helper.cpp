@@ -321,12 +321,13 @@ void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
     }
 }
 
-void get_file_sha1(const char* path, unsigned char *md)
+//计算文件的 SHA-1 散列值
+void get_file_sha1(const char *path, unsigned char *md)
 {
     const char *project_path = g_config.get_backup_path();
     if(chdir(project_path) == -1)
     {
-        fputs("Chdir error.\n",stderr);
+        fputs("chdir error.\n", stderr);
         exit(1);
     }
 
@@ -334,11 +335,6 @@ void get_file_sha1(const char* path, unsigned char *md)
     if(pf == -1)
     {
         fputs("File can not be open.\n",stderr);
-        exit(1);
-    }
-    if(chdir("..") == -1)
-    {
-        fputs("Chdir error.\n",stderr);
         exit(1);
     }
 
@@ -473,10 +469,5 @@ void send_file_addition(const char *project_path, const char *path, SSL *ssl)
                 ssl_write_wrapper(ssl, buffer, result);
         }
         fclose(pf);
-    }
-    if(chdir("..") == -1)
-    {
-        fputs("Chdir error.\n",stderr);
-        exit(1);
     }
 }

@@ -395,7 +395,7 @@ void send_delta(SSL *ssl)
     uint32_t file_count = 0;
     if(chdir(project_path) == -1)
     {
-        fputs("Chdir error.\n",stderr);
+        fputs("chdir error.\n", stderr);
         exit(1);
     }
     file_count = delta_list.size();
@@ -410,11 +410,6 @@ void send_delta(SSL *ssl)
                            delta_list.at(i).get_sig_path(), ssl);
     }
     ssl_read_wrapper(ssl, buffer, 2);
-    if(chdir("..") == -1)
-    {
-        fputs("Chdir error.\n",stderr);
-        exit(1);
-    }
 }
 
 void send_addition_fn(SSL *ssl)
