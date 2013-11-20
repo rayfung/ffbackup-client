@@ -120,11 +120,13 @@ char *read_string(SSL *ssl)
     return str;
 }
 
+//读取指定数量的数据，如果缓冲区没有足够的数据，则阻塞到有新数据到达
 void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
 {
     int ret = 0;
     int pos = 0;
     char *ptr = (char *)buffer;
+
     while(pos < num)
     {
         ret = SSL_read(ssl, ptr + pos, num - pos);
@@ -133,7 +135,7 @@ void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
             case SSL_ERROR_NONE:
                 break;
             default:
-                fputs("SSL_read error.\n",stderr);
+                fputs("SSL_read error.\n", stderr);
                 exit(1);
         }
         pos += ret;
@@ -143,6 +145,7 @@ void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
 void ssl_write_wrapper(SSL *ssl, const void *buffer, int num)
 {
     int ret;
+
     ret = SSL_write(ssl, buffer, num);
     switch( SSL_get_error( ssl, ret ) )
     {
