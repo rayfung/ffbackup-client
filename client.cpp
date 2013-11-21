@@ -84,6 +84,7 @@ int main( int argc, char **argv )
     const char *keyfile = NULL;
     const char *host = NULL;
     const char *port = NULL;
+    const char *cwd = NULL;
     int tlsv1 = 0;
 
     while( (c = getopt( argc, argv, "hTf:" )) != -1 )
@@ -113,6 +114,18 @@ int main( int argc, char **argv )
     cafile   = g_config.get_ca_file();
     certfile = g_config.get_cert_file();
     keyfile  = g_config.get_key_file();
+    cwd      = g_config.get_backup_path();
+
+    if(cwd == NULL || cwd[0] == '\0')
+    {
+        fprintf(stderr, "backup path is invalid.\n");
+        exit(1);
+    }
+    if(chdir(cwd) < 0)
+    {
+        perror("chdir");
+        exit(1);
+    }
 
     /* Initialize SSL Library */
     SSL_library_init();
@@ -388,16 +401,11 @@ void get_signature(SSL *ssl)
 
 void send_delta(SSL *ssl)
 {
-    const char *project_path = g_config.get_backup_path();
     uint32_t i = 0;
     char buffer[2];
     char command = 0x04;
     uint32_t file_count = 0;
-    if(chdir(project_path) == -1)
-    {
-        fputs("chdir error.\n", stderr);
-        exit(1);
-    }
+
     file_count = delta_list.size();
     file_count = hton32(file_count);
     buffer[0] = version;
@@ -414,7 +422,6 @@ void send_delta(SSL *ssl)
 
 void send_addition_fn(SSL *ssl)
 {
-    const char *project_path = g_config.get_backup_path();
     char buffer[2];
     char command = 0x06;
     uint32_t i = 0;
@@ -427,7 +434,7 @@ void send_addition_fn(SSL *ssl)
     ssl_write_wrapper(ssl, &file_count, 4);
     while(i < addition_list.size())
     {
-        send_file_addition(project_path, addition_list.at(i).get_path(), ssl);
+        send_file_addition(addition_list.at(i).get_path(), ssl);
         i++;
     }
     ssl_read_wrapper(ssl, buffer, 2);

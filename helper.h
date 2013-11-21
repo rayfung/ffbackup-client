@@ -37,6 +37,6 @@ void list_compare(vector<file_info>&local_list,vector<file_info>&sever_list,
                   vector<file_info>&deletion_list);
 void simplify_deletion_list(vector<file_info>&deletion_list);
 void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *ssl);
-void send_file_addition(const char *project_path, const char *path, SSL *ssl);
+void send_file_addition(const char *path, SSL *ssl);
 
 #endif

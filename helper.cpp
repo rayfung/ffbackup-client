@@ -311,13 +311,6 @@ void find_delta_list(vector<file_info> diff_list, vector<file_info>&delta_list)
 //计算文件的 SHA-1 散列值
 void get_file_sha1(const char *path, unsigned char *md)
 {
-    const char *project_path = g_config.get_backup_path();
-    if(chdir(project_path) == -1)
-    {
-        fputs("chdir error.\n", stderr);
-        exit(1);
-    }
-
     int pf = open(path,O_RDONLY);
     if(pf == -1)
     {
@@ -417,13 +410,8 @@ void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *
     fclose(delta_file);
 }
 
-void send_file_addition(const char *project_path, const char *path, SSL *ssl)
+void send_file_addition(const char *path, SSL *ssl)
 {
-    if(chdir(project_path) == -1)
-    {
-        fputs("Project path is wrong.\n",stderr);
-        exit(1);
-    }
     const size_t max_buffer_size = 1024;
     FILE *pf;
     struct stat file_info;
