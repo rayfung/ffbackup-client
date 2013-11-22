@@ -196,14 +196,14 @@ int main( int argc, char **argv )
 static int err_exit( const char *string )
 {
     fprintf( stderr, "%s\n", string );
-    exit(0);
+    exit(1);
 }
 
 static int ssl_err_exit( const char *string )
 {
     BIO_printf( bio_err, "%s\n", string );
     ERR_print_errors( bio_err );
-    exit(0);
+    exit(1);
 }
 
 static void sigpipe_handle( int x )
