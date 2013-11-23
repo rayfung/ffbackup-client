@@ -91,18 +91,21 @@ int main( int argc, char **argv )
     {
         switch(c)
         {
-            case 'h':
-                printf("-f <path>\tConfiguration file path\n");
-                printf("-h       \tShow this help\n");
-                printf("-T       \tTLS v1 protocol\n");
-                exit(0);
+        case 'h':
+            printf("-f <path>\tConfiguration file path\n");
+            printf("-h       \tShow this help\n");
+            printf("-T       \tTLS v1 protocol\n");
+            exit(0);
 
-            case 'f':
-                if(!(CFG_PATH = strdup(optarg)))
-                    err_exit("Out of memory");
-                break;
+        case 'f':
+            if(!(CFG_PATH = strdup(optarg)))
+                err_exit("Out of memory");
+            break;
 
-            case 'T':  tlsv1 = 1;       break;
+        case 'T':  tlsv1 = 1;       break;
+
+        default:
+            exit(1);
         }
     }
 
