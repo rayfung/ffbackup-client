@@ -92,9 +92,9 @@ int main( int argc, char **argv )
         switch(c)
         {
             case 'h':
-                printf( "-T\t\tTLS v1 protocol\n" );
-                printf("-i <instruction>\tInstruction name\n");
                 printf("-f <path>\tConfiguration file path\n");
+                printf("-h       \tShow this help\n");
+                printf("-T       \tTLS v1 protocol\n");
                 exit(0);
 
             case 'f':
