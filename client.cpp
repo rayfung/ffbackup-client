@@ -157,7 +157,6 @@ int main( int argc, char **argv )
     SSL_CTX_set_default_passwd_cb( ctx, password_cb );
     if ( keyfile )
     {
-        printf("load key file %s\n", keyfile);
         /* Load private key */
         if ( ! SSL_CTX_use_PrivateKey_file( ctx, keyfile, SSL_FILETYPE_PEM ) )
             ssl_err_exit( "Can't read key file" );
@@ -369,7 +368,6 @@ void get_signature(SSL *ssl)
     ssl_read_wrapper(ssl, &file_count, 4);
     file_count = ntoh32(file_count);
     i = 0;
-    printf("file_count in get_sig:%d\n",file_count);
     while(i < (int)file_count)
     {
         strcpy(sig_name, "/tmp/ffbackup-client-XXXXXX");
@@ -438,7 +436,6 @@ void send_addition_fn(SSL *ssl)
         i++;
     }
     ssl_read_wrapper(ssl, buffer, 2);
-    printf("command in send_addition_fn:%d\n",(int)buffer[1]);
 }
 
 void send_deletion(SSL *ssl)
@@ -459,7 +456,6 @@ void send_deletion(SSL *ssl)
         i++;
     }
     ssl_read_wrapper(ssl, buffer, 2);
-    printf("command in send_deletion:%d\n",(int)buffer[1]);
 }
 
 
@@ -472,13 +468,12 @@ void finish_backup(int sock, SSL *ssl)
     buffer[1] = command;
     ssl_write_wrapper(ssl, buffer, 2);
     ssl_read_wrapper(ssl, buffer, 2);
-    printf("command in finish_backup:%d\n",buffer[1]);
     if(SSL_shutdown( ssl ) == 0)
     {
         shutdown(sock, SHUT_WR);
         if(SSL_shutdown( ssl ) == 1)
         {
-            printf("All finished.\n");
+            printf("Done!\n");
             exit(0);
         }
         else

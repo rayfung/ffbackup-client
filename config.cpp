@@ -107,7 +107,6 @@ bool client_config::read_config(const char *path)
                     }
                     content.get(value_list[i], 0, value_len);
                     value_list[i][value_len] = '\0';
-                    fprintf(stderr, "%s=%s\n", key_list[i], value_list[i]);
                     break;
                 }
             }
