@@ -340,6 +340,7 @@ void get_file_sha1(const char *path, unsigned char *md)
         fputs("SHA1_Final error.\n",stderr);
         exit(1);
     }
+    close(pf);
 }
 
 void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *ssl)
