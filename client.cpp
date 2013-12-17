@@ -417,6 +417,7 @@ void send_delta(SSL *ssl)
     {
         send_file_delta(delta_list.at(i).get_path(),
                            delta_list.at(i).get_sig_path(), ssl);
+        unlink(delta_list.at(i).get_sig_path());
     }
     ssl_read_wrapper(ssl, buffer, 2);
 }
