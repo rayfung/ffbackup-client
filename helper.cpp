@@ -357,8 +357,28 @@ void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *
     rs_stats_t stats;
 
     sig_file = fopen(sig_file_path,"rb");
+    if(sig_file == NULL)
+    {
+        fprintf(stderr, "failed to open signature file '%s'\n", sig_file_path);
+        exit(1);
+    }
+
     new_file = fopen(new_file_path,"rb");
+    if(new_file == NULL)
+    {
+        fclose(sig_file);
+        fprintf(stderr, "failed to open file '%s'\n", new_file_path);
+        exit(1);
+    }
+
     delta_file = tmpfile();
+    if(delta_file == NULL)
+    {
+        fclose(sig_file);
+        fclose(new_file);
+        fprintf(stderr, "failed to create temporary file\n");
+        exit(1);
+    }
 
     ret = rs_loadsig_file(sig_file, &sumset, &stats);
     if(ret != RS_DONE)
