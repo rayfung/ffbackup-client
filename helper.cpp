@@ -206,7 +206,8 @@ void _scan_dir(const std::string &base, std::string dir, vector<file_info> *resu
 
             _scan_dir(base, path + "/", result);
         }
-        else if(S_ISREG(statbuf.st_mode))
+        else if(S_ISREG(statbuf.st_mode) &&
+                access((base + path).c_str(), R_OK) == 0)
         {
             file_info info(path.c_str(), 'f');
             result->push_back(info);
