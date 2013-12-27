@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <string>
+#include <algorithm>
 #include <stdlib.h>
 #include <dirent.h>
 #include <librsync.h>
@@ -171,6 +171,11 @@ vector<file_info> get_server_list(SSL *ssl)
     for(i = 0; i < (int)file_count; i++)
     {
         file_path = read_string(ssl);
+        if(!is_path_safe(std::string(file_path)))
+        {
+            fprintf(stderr, "remote host sent illegal path, aborted\n");
+            exit(1);
+        }
         ssl_read_wrapper(ssl, &file_type, 1);
         file_info store(file_path, file_type);
         file_list.push_back(store);

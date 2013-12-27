@@ -2,6 +2,8 @@
 #define HELPER_H
 
 #include <vector>
+#include <string>
+#include <list>
 #include <stdio.h>
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -38,5 +40,6 @@ void list_compare(vector<file_info>&local_list,vector<file_info>&sever_list,
 void simplify_deletion_list(vector<file_info>&deletion_list);
 void send_file_delta(const char* new_file_path, const char *sig_file_path, SSL *ssl);
 void send_file_addition(const char *path, SSL *ssl);
+bool is_path_safe(const std::string &path);
 
 #endif
