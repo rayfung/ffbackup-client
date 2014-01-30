@@ -291,10 +291,7 @@ void die(const char *msg)
 }
 
 
-/**
-*the client start backup and send the files list to the server
-*ssl: the sock to write data to the server
-*/
+/* 从服务端获取文件列表，然后和本地文件列表作对比，确定新增文件列表、变化文件列表和删除文件列表 */
 void start_backup(SSL *ssl)
 {
     const char *project_name = g_config.get_project_name();
@@ -312,6 +309,7 @@ void start_backup(SSL *ssl)
     simplify_deletion_list(deletion_list);
 }
 
+/* 从服务端获取变化文件列表中的所有文件的 SHA-1 哈希值 */
 void get_hash(SSL *ssl)
 {
     char buffer[2];
@@ -345,6 +343,7 @@ void get_hash(SSL *ssl)
     find_delta_list(diff_list, delta_list);
 }
 
+/* 从服务端获取变化文件列表中的文件的 rsync 签名 */
 void get_signature(SSL *ssl)
 {
     char buffer[2];
@@ -402,6 +401,7 @@ void get_signature(SSL *ssl)
     }
 }
 
+/* 发送差异数据 */
 void send_delta(SSL *ssl)
 {
     uint32_t i = 0;
@@ -424,6 +424,7 @@ void send_delta(SSL *ssl)
     ssl_read_wrapper(ssl, buffer, 2);
 }
 
+/* 发送新增的文件 */
 void send_addition_fn(SSL *ssl)
 {
     char buffer[2];
@@ -444,6 +445,7 @@ void send_addition_fn(SSL *ssl)
     ssl_read_wrapper(ssl, buffer, 2);
 }
 
+/* 发送删除文件列表 */
 void send_deletion(SSL *ssl)
 {
     char buffer[2];
@@ -465,7 +467,7 @@ void send_deletion(SSL *ssl)
 }
 
 
-
+/* 通知服务端备份已完成 */
 void finish_backup(int sock, SSL *ssl)
 {
     char buffer[2];
@@ -498,8 +500,6 @@ void finish_backup(int sock, SSL *ssl)
 /**
  * client ask to backup the project
  * ssl: the ssl to communicate with the server
- * file_path: the spy program use it to store the information of the current program 
- * instruction: the instruction that the client want to excuate 
  */
 static void client_request(int sock, SSL *ssl)
 {
