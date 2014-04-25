@@ -17,7 +17,7 @@
 #define FF_LITTLE_ENDIAN 0
 #define FF_BIG_ENDIAN 1
 
-const char *CFG_PATH = "/etc/ffbackup/client.cfg";
+const char *CFG_PATH = "/etc/ffbackup/client.conf";
 extern client_config g_config;
 
 void dump_data(void *data, size_t size)
