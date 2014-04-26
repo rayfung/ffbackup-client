@@ -362,18 +362,16 @@ void get_signature(SSL *ssl)
     file_count = delta_list.size();
     file_count = hton32(file_count);
     ssl_write_wrapper(ssl, &file_count, 4);
-    
-    while(i < (int)delta_list.size())
-    {
-        ssl_write_wrapper(ssl, delta_list.at(i).get_path(), strlen(delta_list.at(i).get_path()) + 1);
-        i++;
-    }
+
+    //ignore header
     ssl_read_wrapper(ssl, buffer, 2);
     ssl_read_wrapper(ssl, &file_count, 4);
-    file_count = ntoh32(file_count);
+
     i = 0;
-    while(i < (int)file_count)
+    while(i < (int)delta_list.size())
     {
+        ssl_write_wrapper(ssl, delta_list.at(i).get_path(),
+                          strlen(delta_list.at(i).get_path()) + 1);
         strcpy(sig_name, "/tmp/ffbackup-client-XXXXXX");
         sig_fd = mkstemp(sig_name);
         if(sig_fd < 0)
