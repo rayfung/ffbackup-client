@@ -2,6 +2,7 @@
 
 INST_PATH=/opt/ffbackup
 CONFIG_PATH=/etc/ffbackup
+CRON_JOB_PATH=/etc/cron.d
 
 set -e
 
@@ -14,8 +15,9 @@ cd `dirname "$0"`
 echo 'copying files...'
 mkdir -p "$INST_PATH"
 mkdir -p "$CONFIG_PATH"
-cp -v -f -t "$INST_PATH" ffbackup-client ffbackup-restore
-cp -v -n -t "$CONFIG_PATH" client.conf
+cp -v -f -t "$INST_PATH" ffbackup-client ffbackup-restore mail.py cron.sh
+cp -v -n -t "$CONFIG_PATH" client.conf ffbackup_mail.py
+cp -v -n -t "$CRON_JOB_PATH" ffbackup_cron
 
 echo
 echo 'creating user ffbackup'
