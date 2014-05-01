@@ -39,10 +39,7 @@ using namespace std;
 
 extern const char *CFG_PATH;
 extern char *optarg;
-static BIO  *bio_err = 0;
 
-static int  err_exit( const char * );
-static int  ssl_err_exit( const char * );
 static void sigpipe_handle( int );
 static int  ip_connect(int type, int protocol, const char *host, const char *serv);
 static void check_certificate( SSL *, int );
@@ -99,7 +96,7 @@ int main( int argc, char **argv )
 
         case 'f':
             if(!(CFG_PATH = strdup(optarg)))
-                err_exit("Out of memory");
+                die("Out of memory");
             break;
 
         case 'T':  tlsv1 = 1;       break;
@@ -134,9 +131,6 @@ int main( int argc, char **argv )
     SSL_library_init();
     SSL_load_error_strings();
 
-    /* Error message output */
-    bio_err = BIO_new_fp( stderr, BIO_NOCLOSE );
-
     /* Set up a SIGPIPE handler */
     signal( SIGPIPE, sigpipe_handle );
 
@@ -151,18 +145,18 @@ int main( int argc, char **argv )
     /* Load the CAs we trust*/
     if ( (cafile || cadir)  &&
             ! SSL_CTX_load_verify_locations( ctx, cafile, cadir ) )
-        ssl_err_exit( "Can't read CA list" );
+        die( "Can't read CA list" );
 
     /* Load certificates */
     if ( certfile && ! SSL_CTX_use_certificate_chain_file( ctx, certfile ) )
-        ssl_err_exit( "Can't read certificate file" );
+        die( "Can't read certificate file" );
 
     SSL_CTX_set_default_passwd_cb( ctx, password_cb );
     if ( keyfile )
     {
         /* Load private key */
         if ( ! SSL_CTX_use_PrivateKey_file( ctx, keyfile, SSL_FILETYPE_PEM ) )
-            ssl_err_exit( "Can't read key file" );
+            die( "Can't read key file" );
     }
 
     sock = ip_connect( SOCK_STREAM, IPPROTO_TCP, host, port );
@@ -176,7 +170,7 @@ int main( int argc, char **argv )
 
     /* Perform SSL client connect handshake */
     if ( SSL_connect( ssl ) <= 0 )
-        ssl_err_exit( "SSL connect error" );
+        die( "SSL connect error" );
 
     check_certificate( ssl, 1 );
 
@@ -195,19 +189,6 @@ int main( int argc, char **argv )
     close( sock );
 
     exit(0);
-}
-
-static int err_exit( const char *string )
-{
-    fprintf( stderr, "%s\n", string );
-    exit(1);
-}
-
-static int ssl_err_exit( const char *string )
-{
-    BIO_printf( bio_err, "%s\n", string );
-    ERR_print_errors( bio_err );
-    exit(1);
 }
 
 static void sigpipe_handle( int x )
@@ -270,13 +251,13 @@ static void check_certificate( SSL *ssl, int required )
 
     /* Verify server certificate */
     if ( SSL_get_verify_result( ssl ) != X509_V_OK )
-        ssl_err_exit( "Certificate doesn't verify" );
+        die( "Certificate doesn't verify" );
 
     /* Check the common name */
     peer = SSL_get_peer_certificate( ssl );
 
     if ( ! peer  &&  required )
-        err_exit( "No peer certificate" );
+        die( "No peer certificate" );
 }
 
 
@@ -501,39 +482,24 @@ void finish_backup(int sock, SSL *ssl)
  */
 static void client_request(int sock, SSL *ssl)
 {
-    char code = 0x02;
-
+    fprintf(stderr, "%s", "[  0 %] start_backup...\n");
     start_backup(ssl);
-    while(1)
-    {
-        switch(code)
-        {
-            case 0x02:
-                get_hash(ssl);
-                code = 0x03;
-                break;
-            case 0x03:
-                get_signature(ssl);
-                code = 0x04;
-                break;
-            case 0x04:
-                send_delta(ssl);
-                code = 0x05;
-                break;
-            case 0x05:
-                send_deletion(ssl);
-                code = 0x06;
-                break;
-            case 0x06:
-                send_addition_fn(ssl);
-                code = 0x07;
-                break;
-            case 0x07:
-                finish_backup(sock, ssl);
-                code = 0x08;
-                break;
-            default:
-                exit(1);
-        }
-    }
+
+    fprintf(stderr, "%s", "[  5 %] get_hash...\n");
+    get_hash(ssl);
+
+    fprintf(stderr, "%s", "[ 20 %] get_signature...\n");
+    get_signature(ssl);
+
+    fprintf(stderr, "%s", "[ 40 %] send_delta...\n");
+    send_delta(ssl);
+
+    fprintf(stderr, "%s", "[ 65 %] send_deletion...\n");
+    send_deletion(ssl);
+
+    fprintf(stderr, "%s", "[ 70 %] send_addition...\n");
+    send_addition_fn(ssl);
+
+    fprintf(stderr, "%s", "[ 90 %] finish_backup...\n");
+    finish_backup(sock, ssl);
 }

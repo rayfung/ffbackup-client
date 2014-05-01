@@ -102,7 +102,6 @@ char *read_string(SSL *ssl)
             case SSL_ERROR_NONE:
                 break;
             default:
-                fputs("SSL_write error.\n", stderr);
                 exit(1);
         }
         store.push_back(buf, 1);
@@ -113,7 +112,6 @@ char *read_string(SSL *ssl)
     str = (char *)malloc(ffbuffer_length);
     if(!str)
     {
-        fputs("malloc error.\n", stderr);
         exit(1);
     }
     store.get(str, 0, ffbuffer_length);
@@ -135,7 +133,6 @@ void ssl_read_wrapper(SSL *ssl, void *buffer, int num)
             case SSL_ERROR_NONE:
                 break;
             default:
-                fputs("SSL_read error.\n", stderr);
                 exit(1);
         }
         pos += ret;
@@ -152,7 +149,6 @@ void ssl_write_wrapper(SSL *ssl, const void *buffer, int num)
         case SSL_ERROR_NONE:
             break;
         default:
-            fputs("SSL_write error.\n",stderr);
             exit(1);
     }
 }
