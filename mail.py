@@ -1,12 +1,10 @@
 import smtplib
 import sys
 import socket
+import ffbackup_mail
 
 # Import the email modules we'll need
 from email.mime.text import MIMEText
-
-sys.path.append('/etc/ffbackup')
-import ffbackup_mail
 
 if ffbackup_mail.alert_enabled == False:
     print 'Alert email feature is disabled'

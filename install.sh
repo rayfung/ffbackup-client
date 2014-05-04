@@ -16,8 +16,10 @@ echo 'copying files...'
 mkdir -p "$INST_PATH"
 mkdir -p "$CONFIG_PATH"
 cp -v -f -t "$INST_PATH" ffbackup-client ffbackup-restore mail.py cron.sh
-cp -v -n -t "$CONFIG_PATH" client.conf ffbackup_mail.py
+cp -v -n -t "$INST_PATH" ffbackup_mail.py
+cp -v -n -t "$CONFIG_PATH" client.conf
 cp -v -n -t "$CRON_JOB_PATH" ffbackup_cron
+ln -v -f --symbolic "$INST_PATH/ffbackup_mail.py" "$CONFIG_PATH/mail.cfg"
 
 echo
 echo 'creating user ffbackup'
