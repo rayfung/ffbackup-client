@@ -82,24 +82,20 @@ int main( int argc, char **argv )
     const char *host = NULL;
     const char *port = NULL;
     const char *cwd = NULL;
-    int tlsv1 = 0;
 
-    while( (c = getopt( argc, argv, "hTf:" )) != -1 )
+    while( (c = getopt( argc, argv, "hf:" )) != -1 )
     {
         switch(c)
         {
         case 'h':
             printf("-f <path>\tConfiguration file path\n");
             printf("-h       \tShow this help\n");
-            printf("-T       \tTLS v1 protocol\n");
             exit(0);
 
         case 'f':
             if(!(CFG_PATH = strdup(optarg)))
                 die("Out of memory");
             break;
-
-        case 'T':  tlsv1 = 1;       break;
 
         default:
             exit(1);
@@ -135,10 +131,7 @@ int main( int argc, char **argv )
     signal( SIGPIPE, sigpipe_handle );
 
     /* Create SSL context*/
-    if ( tlsv1 )
-        meth = TLSv1_method();
-    else
-        meth = SSLv23_method();
+    meth = TLSv1_method();
 
     ctx = SSL_CTX_new( meth );
 
